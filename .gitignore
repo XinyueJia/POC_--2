@@ -1,0 +1,64 @@
+# Rmd output
+*.html
+*.md_backup
+*.docx
+
+# R / RStudio
+.Rhistory
+.RData
+.Ruserdata
+.Rproj.user/
+*.Rproj
+
+# Data files (raw data, not tracked)
+*.xlsx
+*.xls
+*.csv
+data/raw/
+data/processed/
+
+# Stan / CmdStan
+*.exe
+*.o
+*.a
+*.so
+*.dylib
+*.stan.in
+*.hpp
+*.stan_model
+.cmdstanpy_*
+cmdstan_model_*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+
+# Output and logs
+output/
+logs/
+*.log
+*.err
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Sensitive files (if any)
+config/*.secret.json
+config/*.private.*
+
+# Cache
+.cache/
+*.cache

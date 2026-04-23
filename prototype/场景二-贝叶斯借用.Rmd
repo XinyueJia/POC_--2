@@ -1,0 +1,1243 @@
+---
+title: "单臂试验结合多来源外部对照的三类结局简要分析示例"
+author: "ZZY"
+date: "2026-04-13"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    number_sections: true
+    df_print: paged
+  word_document:
+    toc: true
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+# knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+# 统一安装并加载本文档会用到的 R 包。
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load(openxlsx,dplyr,tableone,survey,WeightIt,cobalt,survival,broom,brms,posterior)
+
+# 预先定义基线变量，避免后续 chunk 反复手写。
+baseline_vars <- c("age", "albumin", "sex", "ecog", "stage", "biomarker", "prior_tx")
+baseline_factor_vars <- c("sex", "ecog", "stage", "biomarker", "prior_tx")
+ps_formula <- trt ~ age + sex + ecog + stage + biomarker + prior_tx + albumin
+
+# 统一格式化数值结果。
+fmt_num3 <- function(x) {
+  ifelse(is.na(x), "", formatC(as.numeric(x), format = "f", digits = 3))
+}
+
+# 统一格式化 P 值，便于表格输出。
+fmt_p_academic <- function(p) {
+  ifelse(
+    is.na(p), "",
+    ifelse(p < 0.001, "<0.001", formatC(as.numeric(p), format = "f", digits = 3))
+  )
+}
+
+# 统一读取并整理分析数据，减少不同 chunk 的重复代码。
+read_analysis_data <- function(data_path = "demo_data_advanced.xlsx") {
+  dat <- openxlsx::read.xlsx(data_path) %>%
+    dplyr::mutate(
+      source = factor(source, levels = c("External_A", "External_B", "Hainan_Treated")),
+      sex = factor(sex),
+      ecog = factor(ecog),
+      stage = factor(stage),
+      biomarker = factor(biomarker),
+      prior_tx = factor(prior_tx),
+      trt = as.integer(trt)
+    )
+
+  if ("status" %in% names(dat)) {
+    dat$status <- as.integer(dat$status)
+  }
+
+  if ("binary_y" %in% names(dat)) {
+    dat$binary_y <- as.integer(dat$binary_y)
+  }
+
+  dat
+}
+
+# 对 IPTW 做分位数截断，降低极端权重影响。
+trim_iptw_weights <- function(w, trim_lower = 0.01, trim_upper = 0.99) {
+  trim_q <- as.numeric(stats::quantile(w, probs = c(trim_lower, trim_upper), na.rm = TRUE))
+  pmin(pmax(w, trim_q[1]), trim_q[2])
+}
+
+# 基线表展示时把治疗组放在第一列，便于和原示例保持一致。
+prepare_baseline_data <- function(data) {
+  dplyr::mutate(data, source = factor(source, levels = c("Hainan_Treated", "External_A", "External_B")))
+}
+
+# 根据是否加权，统一生成 tableone 的三组基线表对象。
+make_tableone_three_groups <- function(data, weight_var = NULL) {
+  data <- prepare_baseline_data(data)
+
+  if (is.null(weight_var)) {
+    tableone::CreateTableOne(
+      vars = baseline_vars,
+      strata = "source",
+      data = data,
+      factorVars = baseline_factor_vars,
+      test = TRUE,
+      smd = TRUE
+    )
+  } else {
+    design_obj <- survey::svydesign(
+      ids = ~1,
+      weights = stats::as.formula(paste0("~", weight_var)),
+      data = data
+    )
+
+    tableone::svyCreateTableOne(
+      vars = baseline_vars,
+      strata = "source",
+      data = design_obj,
+      factorVars = baseline_factor_vars,
+      test = TRUE,
+      smd = TRUE
+    )
+  }
+}
+
+# 单独生成两两比较的 tableone 对象，用来提取 T vs A 和 T vs B 两列 SMD。
+make_tableone_two_groups <- function(data, groups, weight_var = NULL) {
+  data <- prepare_baseline_data(data)
+  data <- subset(data, source %in% groups)
+  data$source <- droplevels(data$source)
+
+  if (is.null(weight_var)) {
+    tableone::CreateTableOne(
+      vars = baseline_vars,
+      strata = "source",
+      data = data,
+      factorVars = baseline_factor_vars,
+      test = TRUE,
+      smd = TRUE
+    )
+  } else {
+    design_obj <- survey::svydesign(
+      ids = ~1,
+      weights = stats::as.formula(paste0("~", weight_var)),
+      data = data
+    )
+
+    tableone::svyCreateTableOne(
+      vars = baseline_vars,
+      strata = "source",
+      data = design_obj,
+      factorVars = baseline_factor_vars,
+      test = TRUE,
+      smd = TRUE
+    )
+  }
+}
+
+# 提取 pairwise SMD，保持与原示例相同的两列比较结构。
+extract_pairwise_smd <- function(data, weight_var = NULL) {
+  tab_a <- make_tableone_two_groups(data, c("Hainan_Treated", "External_A"), weight_var = weight_var)
+  tab_b <- make_tableone_two_groups(data, c("Hainan_Treated", "External_B"), weight_var = weight_var)
+
+  list(
+    smd_a = tableone::ExtractSmd(tab_a)[, 1],
+    smd_b = tableone::ExtractSmd(tab_b)[, 1]
+  )
+}
+
+# 把分类变量第一行上的 P 值和变量名向下补齐到各水平行。
+fill_down <- function(x) {
+  out <- x
+  for (i in seq_along(out)) {
+    if ((is.na(out[i]) || out[i] == "") && i > 1) {
+      out[i] <- out[i - 1]
+    }
+  }
+  out
+}
+
+# 连续变量单元格改成原示例更接近的均值 ± 标准差写法。
+format_continuous_cell <- function(x) {
+  ifelse(
+    grepl("^[0-9.-]+ \\([0-9.-]+\\)$", x),
+    sub("^([0-9.-]+) \\(([0-9.-]+)\\)$", "\\1 ± \\2", x),
+    x
+  )
+}
+
+# 给分类变量单元格补回百分号，保持表格展示更直观。
+format_categorical_cell <- function(x) {
+  ifelse(
+    grepl("^[0-9.]+ \\([0-9.-]+\\)$", x),
+    sub("^([0-9.]+) \\(([0-9.-]+)\\)$", "\\1 (\\2%)", x),
+    x
+  )
+}
+
+# 加权基线表改成“加权人数 + 加权百分比”。
+merge_weighted_cat_cell <- function(unweighted_cell, weighted_cell) {
+  if (is.na(unweighted_cell) || is.na(weighted_cell) || unweighted_cell == "" || weighted_cell == "") {
+    return(weighted_cell)
+  }
+
+  n_part <- sub(" .*$", "", weighted_cell)
+  pct_part <- sub("^.*\\(([0-9.-]+)\\)$", "\\1", weighted_cell)
+  paste0(n_part, " (", pct_part, "%)")
+}
+
+# 统一控制 tableone 打印格式，确保三张表口径一致。
+tableone_matrix <- function(table_obj) {
+  print(
+    table_obj,
+    smd = TRUE,
+    showAllLevels = TRUE,
+    quote = FALSE,
+    noSpaces = TRUE,
+    printToggle = FALSE,
+    contDigits = 1,
+    catDigits = 1,
+    pDigits = 3
+  )
+}
+
+# 把 tableone 对象整理成接近原示例的基线表结构。
+tableone_to_baseline_df <- function(table_obj, smd_lookup, weighted = FALSE, unweighted_obj = NULL) {
+  tab <- tableone_matrix(table_obj)
+  tab_unw <- if (!is.null(unweighted_obj)) tableone_matrix(unweighted_obj) else NULL
+
+  out <- data.frame(
+    Variable_raw = rownames(tab),
+    Level = tab[, "level"],
+    Hainan_Treated = tab[, "Hainan_Treated"],
+    External_A = tab[, "External_A"],
+    External_B = tab[, "External_B"],
+    P_overall = tab[, "p"],
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
+
+  out$Variable_key <- ifelse(out$Variable_raw == "", NA_character_, out$Variable_raw)
+  out$Variable_key <- fill_down(out$Variable_key)
+  out$Variable_key <- sub(" \\(mean \\(SD\\)\\)$", "", out$Variable_key)
+  out$Variable_key <- sub(" \\(%\\)$", "", out$Variable_key)
+  out$Variable <- ifelse(out$Variable_raw == "", "", out$Variable_key)
+  out$P_overall <- fill_down(out$P_overall)
+
+  is_cont <- out$Variable_key %in% c("age", "albumin")
+  out$Hainan_Treated[is_cont] <- format_continuous_cell(out$Hainan_Treated[is_cont])
+  out$External_A[is_cont] <- format_continuous_cell(out$External_A[is_cont])
+  out$External_B[is_cont] <- format_continuous_cell(out$External_B[is_cont])
+
+  if (!is.null(tab_unw)) {
+    out$Hainan_Treated[!is_cont] <- mapply(merge_weighted_cat_cell, tab_unw[, "Hainan_Treated"][!is_cont], out$Hainan_Treated[!is_cont])
+    out$External_A[!is_cont] <- mapply(merge_weighted_cat_cell, tab_unw[, "External_A"][!is_cont], out$External_A[!is_cont])
+    out$External_B[!is_cont] <- mapply(merge_weighted_cat_cell, tab_unw[, "External_B"][!is_cont], out$External_B[!is_cont])
+  } else {
+    out$Hainan_Treated[!is_cont] <- format_categorical_cell(out$Hainan_Treated[!is_cont])
+    out$External_A[!is_cont] <- format_categorical_cell(out$External_A[!is_cont])
+    out$External_B[!is_cont] <- format_categorical_cell(out$External_B[!is_cont])
+  }
+
+  out$SMD.T.vs.A <- ifelse(out$Variable_key %in% names(smd_lookup$smd_a), sprintf("%.3f", smd_lookup$smd_a[out$Variable_key]), "")
+  out$SMD.T.vs.B <- ifelse(out$Variable_key %in% names(smd_lookup$smd_b), sprintf("%.3f", smd_lookup$smd_b[out$Variable_key]), "")
+
+  out <- out[out$Variable_key != "n", , drop = FALSE]
+
+  if (weighted) {
+    names(out)[names(out) == "Hainan_Treated"] <- "Hainan_Treated (Weighted)"
+    names(out)[names(out) == "External_A"] <- "External_A (Weighted)"
+    names(out)[names(out) == "External_B"] <- "External_B (Weighted)"
+    names(out)[names(out) == "SMD.T.vs.A"] <- "SMD.T.vs.A.After"
+    names(out)[names(out) == "SMD.T.vs.B"] <- "SMD.T.vs.B.After"
+    names(out)[names(out) == "P_overall"] <- "P.overall.after"
+  }
+
+  display_cols <- if (weighted) {
+    c(
+      "Variable",
+      "Level",
+      "Hainan_Treated (Weighted)",
+      "External_A (Weighted)",
+      "External_B (Weighted)",
+      "SMD.T.vs.A.After",
+      "SMD.T.vs.B.After",
+      "P.overall.after"
+    )
+  } else {
+    c(
+      "Variable",
+      "Level",
+      "Hainan_Treated",
+      "External_A",
+      "External_B",
+      "SMD.T.vs.A",
+      "SMD.T.vs.B",
+      "P_overall"
+    )
+  }
+
+  out <- out[, display_cols]
+
+  rownames(out) <- NULL
+  out
+}
+
+# 用 broom 统一提取模型里 trt 的效应估计和区间。
+extract_tidy_result <- function(model, outcome, effect, exponentiate = FALSE, term = "trt") {
+  tidy_df <- broom::tidy(model, conf.int = TRUE, exponentiate = exponentiate)
+  tidy_df <- tidy_df[tidy_df$term == term, , drop = FALSE]
+
+  if (nrow(tidy_df) != 1) {
+    stop(sprintf("Term '%s' not found or not unique.", term))
+  }
+
+  data.frame(
+    outcome = outcome,
+    effect = effect,
+    estimate = tidy_df$estimate,
+    conf.low = tidy_df$conf.low,
+    conf.high = tidy_df$conf.high,
+    p.value = tidy_df$p.value,
+    stringsAsFactors = FALSE
+  )
+}
+
+# 频率学结果表只保留当前方法真正需要展示的列。
+format_freq_result_table <- function(result_df) {
+  data.frame(
+    "结局类型" = result_df$outcome,
+    "效应指标" = result_df$effect,
+    "估计值" = fmt_num3(result_df$estimate),
+    "95%区间下限" = fmt_num3(result_df$conf.low),
+    "95%区间上限" = fmt_num3(result_df$conf.high),
+    "P值" = fmt_p_academic(result_df$p.value),
+    check.names = FALSE,
+    stringsAsFactors = FALSE
+  )
+}
+
+# 给汇总比较表补回分析方法列。
+add_analysis_method_col <- function(result_df, analysis_method) {
+  cbind(
+    data.frame("分析方法" = analysis_method, check.names = FALSE, stringsAsFactors = FALSE),
+    result_df
+  )
+}
+# 统一汇总贝叶斯后验分布。
+posterior_summary <- function(draws, outcome, effect, transform = identity, benefit_rule) {
+  effect_draws <- transform(draws)
+  ci <- stats::quantile(effect_draws, probs = c(0.025, 0.975), na.rm = TRUE)
+
+  data.frame(
+    outcome = outcome,
+    effect = effect,
+    post_mean = mean(effect_draws, na.rm = TRUE),
+    post_median = stats::median(effect_draws, na.rm = TRUE),
+    conf.low = unname(ci[1]),
+    conf.high = unname(ci[2]),
+    post_prob_benefit = mean(benefit_rule(effect_draws), na.rm = TRUE),
+    stringsAsFactors = FALSE
+  )
+}
+
+# 贝叶斯结果表去掉空白 P 值列，只展示后验相关结果。
+format_bayes_result_table <- function(result_df) {
+  data.frame(
+    "结局类型" = result_df$outcome,
+    "效应指标" = result_df$effect,
+    "估计值" = fmt_num3(result_df$post_mean),
+    "95%区间下限" = fmt_num3(result_df$conf.low),
+    "95%区间上限" = fmt_num3(result_df$conf.high),
+    "后验获益概率" = fmt_num3(result_df$post_prob_benefit),
+    check.names = FALSE,
+    stringsAsFactors = FALSE
+  )
+}
+```
+
+# 研究背景与分析目标
+
+在单臂试验中，由于缺少随机化平行对照，治疗效应通常无法像随机对照试验那样直接通过组间比较获得，因此研究者往往需要引入外部对照作为参照，以支持疗效评价。当外部对照来自多个数据来源时，分析会进一步复杂化：一方面，当前治疗组与外部对照之间可能存在基线协变量分布不平衡；另一方面，不同外部对照来源之间也可能存在患者构成、数据采集方式、临床实践背景及结局风险水平等方面的系统性差异。因此，在多来源外部对照的分析中，不仅需要校正治疗组与外部对照之间的混杂偏倚，还需要适当处理不同外部来源之间的异质性，以提高疗效比较的合理性与稳健性。
+
+本示例文件旨在演示：在一个单臂试验场景下，如何将当前治疗组与两个来源的外部对照联合起来，构建一个较完整的疗效比较分析流程。为了体现方法的通用性，示例同时考虑三类临床研究中常见的结局类型：
+
+1.  生存结局；
+2.  二分类结局；
+3.  连续结局。
+
+在分析策略上，本示例依次展示三条具有代表性的分析路径。第一种是传统多变量回归调整方法，即在结局模型中直接纳入治疗指示变量、来源变量及基线协变量，对组间差异进行模型化调整；第二种是基于逆概率加权（inverse probability of treatment weighting, IPTW）的方法，即先通过倾向性评分构造加权伪总体以改善协变量平衡，再在加权样本上进行结局分析；第三种是在 IPTW 基础上进一步结合贝叶斯信息借用思想，对外部对照信息引入固定 power prior 折扣：
+
+1.  传统多变量回归调整；
+2.  逆概率加权（IPTW）后结合回归分析；
+3.  IPTW 基础上结合贝叶斯信息借用（fixed power prior）的分析。
+
+# 示例数据与研究设定
+
+## 数据来源
+
+本示例设定 3 个数据来源，分别代表当前单臂试验治疗组和两个独立的外部对照来源：
+
+-   `Hainan_Treated`：当前单臂试验治疗组；
+-   `External_A`：外部对照来源 A；
+-   `External_B`：外部对照来源 B。
+
+处理变量定义为：
+
+-   `trt = 1`：当前单臂试验治疗组；
+-   `trt = 0`：外部对照。
+
+也就是说，在治疗效应估计中，两个外部对照来源在 treatment 层面被共同视为对照组，但与此同时，示例中仍保留来源变量 source，用于区分 Hainan_Treated、External_A 和 External_B 三组样本。这样做的目的有两点：其一，可以在基线表和描述性分析中按三组分别展示数据特征；其二，可以在后续模型中将 source 作为来源调整变量纳入分析，以控制不同外部来源之间潜在的系统性差异。
+
+## 基线变量与结局变量
+
+示例数据中纳入了一组用于混杂调整的基线协变量，包括连续变量和分类变量两类。
+
+连续变量包括：
+
+-   age：年龄；
+-   albumin：白蛋白水平。
+
+分类变量包括：
+
+-   sex：性别；
+-   ecog：ECOG 体能状态评分；
+-   stage：疾病分期；
+-   biomarker：生物标志物状态；
+-   prior_tx：既往治疗史。
+
+这些变量共同用于刻画患者的基线特征，并在后续分析中作为协变量进入倾向性评分模型、回归模型或加权分析过程。
+
+为展示不同类型结局在单臂试验结合外部对照场景中的分析方式，示例进一步设置了三类结局变量：
+
+-   生存结局：time, status，其中 time 表示随访时间，status 表示事件是否发生；
+-   二分类结局：binary_y，表示某一二元临床结局；
+-   连续结局：cont_y，表示某一连续型临床测量结果。
+
+通过同时设置这三类结局，本示例能够较完整地演示多来源外部对照分析在不同统计模型下的实现方式，并便于比较不同分析路径在不同结局类型下的应用特点。
+
+## 示例数据
+
+-   本示例数据为模拟生成，目的是构建“单臂试验治疗组 + 两个外部对照来源”的分析场景，用于展示多来源外部对照下不同统计方法的应用。
+-   共设三组人群：当前单臂试验治疗组 `Hainan_Treated` 200 例，外部对照来源 `External_A` 260 例，外部对照来源 `External_B` 240 例；治疗组记为 `trt=1`，两个外部对照来源记为 `trt=0`。
+-   随后为所有个体生成一组基线协变量，包括年龄、性别、ECOG 评分、分期、生物标志物状态、既往治疗史和白蛋白水平，并有意使三组在这些变量的分布上存在差异，以模拟真实研究中治疗组与外部对照之间的基线不平衡。
+-   在此基础上，构造一个由基线协变量、治疗效应和来源效应共同决定的线性预测子，并据此分别生成三类结局。生存结局通过参数化生存时间和删失机制生成观察时间 `time` 与事件指示 `status`；二分类结局通过 logistic 模型生成事件概率后进行 Bernoulli 抽样得到 `binary_y`；连续结局则基于正态线性模型生成 `cont_y`。
+-   最后，将变量整理为适合后续建模的格式，形成包含来源变量、治疗变量、基线协变量以及三类结局的完整示例数据集。
+
+```{r data-generate-part1, echo=TRUE, message=FALSE, warning=FALSE}
+################################
+#  构造协变量和分组变量
+################################
+set.seed(20260403)
+
+n_treat <- 200
+n_extA  <- 260
+n_extB  <- 240
+
+gen_covariates <- function(n, source_name) {
+  if (source_name == "Hainan_Treated") {
+    age <- round(rnorm(n, 55, 7), 1)
+    sex <- rbinom(n, 1, 0.60)
+    ecog <- sample(0:2, n, replace = TRUE, prob = c(0.50, 0.38, 0.12))
+    stage <- sample(c("III", "IV"), n, replace = TRUE, prob = c(0.55, 0.45))
+    biomarker <- rbinom(n, 1, 0.42)
+    prior_tx <- rbinom(n, 1, 0.28)
+    albumin <- round(rnorm(n, 41.5, 4.2), 1)
+  } else if (source_name == "External_A") {
+    age <- round(rnorm(n, 60, 8), 1)
+    sex <- rbinom(n, 1, 0.56)
+    ecog <- sample(0:2, n, replace = TRUE, prob = c(0.35, 0.45, 0.20))
+    stage <- sample(c("III", "IV"), n, replace = TRUE, prob = c(0.42, 0.58))
+    biomarker <- rbinom(n, 1, 0.30)
+    prior_tx <- rbinom(n, 1, 0.40)
+    albumin <- round(rnorm(n, 39.0, 4.5), 1)
+  } else if (source_name == "External_B") {
+    age <- round(rnorm(n, 58, 9), 1)
+    sex <- rbinom(n, 1, 0.68)
+    ecog <- sample(0:2, n, replace = TRUE, prob = c(0.28, 0.49, 0.23))
+    stage <- sample(c("III", "IV"), n, replace = TRUE, prob = c(0.38, 0.62))
+    biomarker <- rbinom(n, 1, 0.24)
+    prior_tx <- rbinom(n, 1, 0.52)
+    albumin <- round(rnorm(n, 37.8, 4.8), 1)
+  } else {
+    stop("未知 source_name")
+  }
+
+  data.frame(
+    age = age,
+    sex = sex,
+    ecog = ecog,
+    stage = stage,
+    biomarker = biomarker,
+    prior_tx = prior_tx,
+    albumin = albumin
+  )
+}
+
+d1 <- gen_covariates(n_treat, "Hainan_Treated")
+d2 <- gen_covariates(n_extA,  "External_A")
+d3 <- gen_covariates(n_extB,  "External_B")
+
+d1$source <- "Hainan_Treated"
+d2$source <- "External_A"
+d3$source <- "External_B"
+
+d1$trt <- 1
+ d2$trt <- 0
+ d3$trt <- 0
+
+dat <- rbind(d1, d2, d3)
+dat$id <- seq_len(nrow(dat))
+
+stage_iv <- ifelse(dat$stage == "IV", 1, 0)
+
+################################
+#  构造构造结局变量
+################################
+lp_common <-
+  0.025 * (dat$age - 58) +
+  0.18  * dat$sex +
+  0.40  * dat$ecog +
+  0.55  * stage_iv -
+  0.35  * dat$biomarker +
+  0.22  * dat$prior_tx -
+  0.04  * (dat$albumin - 40) -
+  0.60  * dat$trt
+
+lp_common <- lp_common +
+  ifelse(dat$source == "External_A", 0.08, 0) +
+  ifelse(dat$source == "External_B", 0.20, 0)
+
+shape  <- 1.35
+lambda <- 0.045
+
+u <- runif(nrow(dat))
+true_time <- (-log(u) / (lambda * exp(lp_common)))^(1 / shape)
+
+rand_censor <- rexp(nrow(dat), rate = 0.018)
+admin_censor <- rep(36, nrow(dat))
+censor_time <- pmin(rand_censor, admin_censor)
+
+dat$time   <- pmin(true_time, censor_time)
+dat$status <- as.integer(true_time <= censor_time)
+
+inv_logit <- function(x) 1 / (1 + exp(-x))
+
+lp_binary <-
+  -0.80 +
+  0.020 * (dat$age - 58) +
+  0.15  * dat$sex +
+  0.35  * dat$ecog +
+  0.45  * stage_iv -
+  0.30  * dat$biomarker +
+  0.18  * dat$prior_tx -
+  0.03  * (dat$albumin - 40) -
+  0.55  * dat$trt +
+  ifelse(dat$source == "External_A", 0.08, 0) +
+  ifelse(dat$source == "External_B", 0.18, 0)
+
+p_binary <- inv_logit(lp_binary)
+dat$binary_y <- rbinom(nrow(dat), size = 1, prob = p_binary)
+
+mu_cont <-
+  55 +
+  0.35 * (dat$age - 58) +
+  1.50 * dat$sex +
+  3.20 * dat$ecog +
+  4.50 * stage_iv -
+  2.80 * dat$biomarker +
+  1.80 * dat$prior_tx -
+  0.70 * (dat$albumin - 40) -
+  5.50 * dat$trt +
+  ifelse(dat$source == "External_A", 1.50, 0) +
+  ifelse(dat$source == "External_B", 3.00, 0)
+
+dat$cont_y <- round(rnorm(nrow(dat), mean = mu_cont, sd = 6), 2)
+
+################################
+#  分析数据集整理
+################################
+
+dat$sex <- factor(dat$sex, levels = c(0, 1), labels = c("Female", "Male"))
+dat$ecog <- factor(dat$ecog, levels = c(0, 1, 2))
+dat$stage <- factor(dat$stage, levels = c("III", "IV"))
+dat$biomarker <- factor(dat$biomarker, levels = c(0, 1), labels = c("Negative", "Positive"))
+dat$prior_tx <- factor(dat$prior_tx, levels = c(0, 1), labels = c("No", "Yes"))
+dat$source <- factor(dat$source, levels = c("External_A", "External_B", "Hainan_Treated"))
+
+demo_data_advanced <- dat[, c(
+  "id", "source", "trt", "age", "sex", "ecog", "stage",
+  "biomarker", "prior_tx", "albumin", "time", "status",
+  "binary_y", "cont_y"
+)]
+
+library(openxlsx)
+write.xlsx(demo_data_advanced, "demo_data_advanced.xlsx", rowNames = FALSE)
+head(demo_data_advanced)
+```
+
+# 总体分析思路
+
+本示例按以下顺序展开。首先，给出三组样本的未调整基线表，用于描述当前单臂试验治疗组与两个外部对照来源在协变量分布上的原始差异；其次，构建基于倾向性评分逆概率加权（IPTW）的加权基线表，并结合标准化差异（SMD）对加权前后的协变量平衡情况进行评价；在此基础上，依次展示三类结局在不同分析策略下的疗效比较结果，包括传统多变量回归分析、IPTW 后结合回归的分析，以及 IPTW 基础上进一步结合贝叶斯信息借用（fixed power prior）的分析；最后，对三种方法在生存结局、二分类结局和连续结局下得到的结果进行并列比较和讨论。具体顺序如下:
+
+1.三组未调整基线表； 2.IPTW 加权后的三组基线表与平衡性评价； 3.传统多变量回归分析； 4.IPTW + 回归分析； 5.IPTW + 贝叶斯信息借用分析；
+
+# 基线特征描述与组间可比性评估
+
+## 三组未调整基线表
+
+### 方法说明
+
+在基线特征描述部分，连续变量按三组分别给出均值和标准差，分类变量按三组分别给出频数和百分比。除常规描述性统计外，基线表还分别计算 Hainan_Treated vs External_A 和 Hainan_Treated vs External_B 两组比较的标准化差异（standardized mean difference, SMD），用于量化当前治疗组与两个外部对照来源之间的可比性。对于连续变量，SMD 反映两组均值差异相对于组内变异的大小；对于分类变量，SMD 反映两组在各类别构成比例上的差异程度。与单纯依赖显著性检验不同，SMD 不受样本量影响过大，更适合用于外部对照研究中的基线平衡评价，因此在本示例中被作为判断组间不平衡程度的主要指标。
+
+一方面，它用于展示治疗组与多来源外部对照之间原始基线差异的程度；另一方面，它也为后续 IPTW 加权和平衡改善效果的判断提供参照。如果在未调整基线表中观察到多个协变量的 SMD 较大，则说明当前治疗组与外部对照之间存在明显可比性问题，直接进行未经调整的疗效比较可能产生偏倚；而如果两个外部来源与治疗组的差异模式并不一致，则进一步提示在结局模型中需要考虑来源异质性的处理。
+
+### 未调整基线结果
+
+```{r baseline-functions-1, echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+# 用 tableone 生成三组未加权描述统计。
+dat <- read_analysis_data("demo_data_advanced.xlsx")
+tab_unadjusted <- make_tableone_three_groups(dat)
+
+# 单独提取 Treatment vs External_A / External_B 两列 SMD。
+smd_unadjusted <- extract_pairwise_smd(dat)
+
+# 整理成接近原示例的表结构。
+baseline_table_mean_sd <- tableone_to_baseline_df(tab_unadjusted, smd_unadjusted)
+
+knitr::kable(
+  baseline_table_mean_sd,
+  caption = "Table 1. Unadjusted baseline characteristics by source"
+)
+```
+
+未调整基线表显示，当前单臂试验治疗组 `Hainan_Treated` 与两个外部对照来源在多项基线特征上存在明显差异。连续变量方面，治疗组患者更年轻，白蛋白水平更高；例如治疗组平均年龄为 55.5 岁，而 `External_A` 和 `External_B` 分别为 60.1 岁和 58.3 岁，年龄的 SMD 分别为 0.635 和 0.354。白蛋白差异更为明显，治疗组均值为 41.9，而 `External_A` 和 `External_B` 分别为 39.2 和 38.1，对应 SMD 为 0.625 和 0.841。分类变量方面，ECOG、生物标志物状态和既往治疗史的不平衡也较突出，尤其是治疗组中 ECOG 0 比例更高、既往治疗比例更低，提示治疗组总体预后基础优于外部对照组。
+
+从整体模式看，`External_B` 与治疗组的可比性总体上比 `External_A` 更差，尤其体现在白蛋白、既往治疗史和 ECOG 等关键预后变量上；而 `External_A` 在年龄方面与治疗组差异更明显。`stage` 的组间差异相对较小，两个比较的 SMD 均约为 0.19，且总体检验 P 值为 0.068，提示分期分布尚相对接近。总体而言，该未调整基线表表明当前治疗组与多来源外部对照之间存在实质性基线不平衡，若直接进行未经调整的疗效比较，结果可能受到混杂偏倚影响，因此有必要在后续分析中采用 IPTW 或回归调整等方法改善组间可比性。
+
+## IPTW 加权后的三组基线表
+
+### 理论简介
+
+为改善当前治疗组与外部对照之间的基线可比性，本示例采用基于倾向性评分的逆概率加权（inverse probability of treatment weighting, IPTW）方法。其基本思想是：先根据患者的基线协变量估计其进入治疗组的概率，再利用该概率构造个体权重，从而形成一个加权后的伪总体，使治疗组与对照组在协变量分布上尽可能接近。这样，在理想情况下，加权后的组间比较可以更接近随机化试验中的可比状态。
+
+设处理指示变量为 $T_i$，其中 $T_i=1$ 表示当前单臂试验治疗组，$T_i=0$ 表示外部对照；设 $X_i$ 为个体的基线协变量向量，则倾向性评分定义为：
+
+$$
+e(X_i)=P(T_i=1\mid X_i)
+$$
+
+即在给定基线协变量 $X_i$ 的条件下，个体属于治疗组的概率。在本示例中，倾向性评分通过 logistic 回归模型估计，协变量包括年龄、性别、ECOG 评分、分期、生物标志物状态、既往治疗史和白蛋白水平。需要说明的是，倾向性评分模型的目标是平衡 treatment 层面的协变量分布，因此模型中不直接纳入 `source`，而是将来源差异放在后续结局模型中进一步处理。
+
+在 ATE（average treatment effect）目标下，稳定化逆概率权重定义为：
+
+$$
+w_i=
+\begin{cases}
+\frac{P(T=1)}{e(X_i)}, & T_i=1 \\
+\frac{P(T=0)}{1-e(X_i)}, & T_i=0
+\end{cases}
+$$
+
+其中，$P(T=1)$ 和 $P(T=0)$ 分别表示样本中治疗组和对照组的边际比例。与未稳定化权重相比，稳定化权重在保留平衡作用的同时，通常能够减小权重波动，提高估计稳定性。由于倾向性评分接近 0 或 1 时会产生极端权重，进而导致估计不稳定、方差膨胀，甚至使少数个体对结果产生过大影响，因此本示例进一步对稳定化权重进行分位数截断处理。具体地，将权重限制在 1% 和 99% 分位数之间，得到修剪后的权重 $w_i^*$。
+
+在得到修剪后的权重后，本示例进一步构造 IPTW 加权后的三组基线表。
+
+### IPTW 加权后三组基线结果
+
+```{r ps-estimation-code, echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+# 先用 WeightIt 估计稳定化 IPTW，并做分位数截断。
+dat <- read_analysis_data("demo_data_advanced.xlsx")
+w_out <- WeightIt::weightit(
+  formula = ps_formula,
+  data = dat,
+  method = "glm",
+  estimand = "ATE",
+  stabilize = TRUE
+)
+dat$sw_trim <- trim_iptw_weights(w_out$weights)
+
+# 用 survey + tableone 生成加权后的三组基线表。
+tab_unadjusted <- make_tableone_three_groups(dat)
+tab_weighted <- make_tableone_three_groups(dat, weight_var = "sw_trim")
+
+# 保留原示例里的两列 pairwise SMD 结构。
+smd_weighted <- extract_pairwise_smd(dat, weight_var = "sw_trim")
+
+# 加权表保留未加权人数，同时替换成加权后的百分比和连续变量统计量。
+baseline_table_3g_ps_mean_sd <- tableone_to_baseline_df(
+  tab_weighted,
+  smd_weighted,
+  weighted = TRUE,
+  unweighted_obj = tab_unadjusted
+)
+
+knitr::kable(
+  baseline_table_3g_ps_mean_sd,
+  caption = "Table 2. IPTW 加权后三组基线结果"
+)
+```
+
+IPTW 加权后三组基线表显示，与未调整基线相比，当前治疗组 `Hainan_Treated` 与两个外部对照来源之间的大部分协变量差异已明显缩小，提示逆概率加权在改善组间可比性方面总体有效。连续变量中，年龄的组间差异显著减弱，`Hainan_Treated vs External_A` 和 `Hainan_Treated vs External_B` 的 SMD 分别降至 0.214 和 0.060；白蛋白的平衡改善更为明显，与 `External_A` 的 SMD 已接近 0（0.001），与 `External_B` 的 SMD 也降至 0.133。分类变量方面，ECOG、分期、生物标志物状态和既往治疗史在加权后均达到较好的平衡水平，大多数 SMD 已降至 0.1 左右或更低，说明这些关键预后变量在加权后已基本实现分布上的可比。
+
+从总体检验结果看，加权后多数变量的组间差异已不再显著，例如白蛋白、ECOG、分期、生物标志物状态和既往治疗史的加权后总体检验 P 值分别为 0.225、0.823、0.956、0.857 和 0.238，进一步支持 IPTW 后平衡明显改善。年龄和性别在加权后仍保留一定残余差异，其中年龄的 P 值为 0.013，性别的 P 值为 0.041，对应的 SMD 也提示 `Hainan_Treated` 与 `External_A` 在这两个变量上仍存在轻度不平衡。因此，虽然 IPTW 已显著提升当前治疗组与多来源外部对照之间的整体可比性，但仍不能认为所有协变量都达到完全平衡，后续结局分析中考虑数据源差异是合理且必要的。
+
+# 方法一：传统多变量回归调整
+
+## 理论简介
+
+传统多变量回归调整的基本思想是：在原始观测数据上，直接通过结局回归模型同时纳入治疗指示变量、来源异质性指标以及基线协变量，对治疗效应进行条件调整估计。其核心假设是，在给定这些协变量后，治疗组与外部对照之间的结局差异可以通过参数模型加以刻画，从而降低由于基线不平衡和来源差异带来的偏倚。在单臂试验结合外部对照的场景下，这是一种最直接、也最常见的分析策略。
+
+在本示例中，传统回归方法不对样本进行加权处理，而是直接在结局模型中加入治疗变量、外部来源异质性指标 以及全部预先指定的基线协变量。对于不同类型的结局变量，需要分别使用与其数据分布相匹配的回归模型。对于生存结局，采用 Cox 比例风险模型估计治疗对风险函数的相对影响；对于二分类结局，采用 Logistic 回归模型估计治疗对事件发生优势比的影响；对于连续结局，采用线性回归模型估计治疗对结局均值的影响。三类模型虽然形式不同，但共同的目标都是在控制来源差异和基线协变量后，提取治疗变量对应的回归系数，并将其解释为调整后的治疗效应。
+
+### 生存结局：Cox 比例风险模型
+
+设个体 $i$ 在时间 $t$ 的风险函数为 $h_i(t)$，则 Cox 比例风险模型写为：
+
+$$
+h_i(t)=h_0(t)\exp\left(\beta_1 T_i+\beta_2 Z_i+\beta_3^\top X_i\right)
+$$
+
+其中：
+
+-   $h_0(t)$ 为基线风险函数；
+-   $T_i$ 为治疗指示变量；
+-   $Z_i$ 为外部来源异质性指标；
+-   $X_i$ 为基线协变量向量。
+
+在本示例中：
+
+-   $T_i$ 对应 `trt`；
+-   $Z_i$ 对应 `source_B`，用于表示 `External_B` 相对于 `External_A` 的来源差异；
+-   $X_i$ 包括 `age`、`sex`、`ecog`、`stage`、`biomarker`、`prior_tx` 和 `albumin`。
+
+该模型中，治疗变量的回归系数 $\beta_1$ 表示在控制来源差异和基线协变量后，治疗组相对于外部对照的对数风险比，因此治疗效应可表示为：
+
+$$
+HR=\exp(\beta_1)
+$$
+
+若 $HR<1$，表示治疗组的事件风险低于外部对照；若 $HR>1$，则表示治疗组风险更高。
+
+### 二分类结局：Logistic 回归
+
+对于二分类结局，设 $Y_i$ 表示个体 $i$ 的事件指示变量，则 Logistic 回归模型为：
+
+$$
+\text{logit}\{P(Y_i=1\mid T_i,Z_i,X_i)\}
+=
+\beta_0+\beta_1T_i+\beta_2Z_i+\beta_3^\top X_i
+$$
+
+其中：
+
+-   $\beta_0$ 为截距项；
+-   $T_i$ 为治疗指示变量；
+-   $Z_i$ 为来源异质性指标；
+-   $X_i$ 为基线协变量向量。
+
+该模型中，$\beta_1$ 表示在控制来源差异和基线协变量后，治疗组相对于外部对照的对数优势比，因此治疗效应为：
+
+$$
+OR=\exp(\beta_1)
+$$
+
+若 $OR<1$，表示治疗组事件发生的优势低于外部对照；若 $OR>1$，则表示治疗组事件发生优势更高。具体方向还需结合结局定义判断其临床含义。
+
+### 连续结局：线性回归
+
+对于连续结局，设 $Y_i$ 为个体 $i$ 的连续型观测结果，则线性回归模型写为：
+
+$$
+Y_i=\beta_0+\beta_1T_i+\beta_2Z_i+\beta_3^\top X_i+\varepsilon_i,\quad
+\varepsilon_i\sim N(0,\sigma^2)
+$$
+
+其中：
+
+-   $\beta_0$ 为截距项；
+-   $T_i$ 为治疗指示变量；
+-   $Z_i$ 为来源异质性指标；
+-   $X_i$ 为基线协变量向量；
+-   $\varepsilon_i$ 为随机误差项，假定服从均值为 0、方差为 $\sigma^2$ 的正态分布。
+
+在该模型中，治疗变量对应的系数 $\beta_1$ 即为调整后的均值差，表示在控制来源差异和基线协变量后，治疗组相对于外部对照在连续结局上的平均差异。若 $\beta_1>0$，表示治疗组平均值更高；若 $\beta_1<0$，表示治疗组平均值更低。
+
+总体而言，传统多变量回归调整方法的优点是实现简单、解释直接，并且能够在同一分析框架下适用于多种结局类型。但需要注意的是，该方法对模型设定较为依赖：若协变量与结局之间的函数形式设定不合适，或存在未测混杂，则调整后的治疗效应仍可能存在偏倚。因此，在本示例中，传统回归分析将作为基础比较方法，并与后续的 IPTW 方法及贝叶斯借用方法进行并列展示。
+
+## 代码
+
+下面分别对三类常见结局拟合多变量回归模型。对于生存结局，使用 `coxph()` 拟合 Cox 比例风险模型；对于二分类结局，使用 `glm()` 并指定 `family = binomial(link = "logit")` 拟合 logistic 回归模型；对于连续结局，使用 `lm()` 拟合线性回归模型。这几个函数的共同特点是都以“模型公式 + 数据”为核心输入，并返回包含回归系数、标准误及模型拟合信息的结果对象。后续我们将统一提取治疗变量 `trt` 的效应估计，分别表示为 HR、OR 和均值差，以便对三类结局的结果进行并列展示。
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, paged.print=FALSE}
+# 读取分析数据并统一变量类型。
+dat <- read_analysis_data("demo_data_advanced.xlsx")
+
+# 分别拟合三类结局的传统回归模型。
+
+logit_fit <- glm(
+  binary_y ~ trt + source + age + sex + ecog + stage + biomarker + prior_tx + albumin,
+  data = dat,
+  family = binomial(link = "logit")
+)
+
+lm_fit <- lm(
+  cont_y ~ trt + source + age + sex + ecog + stage + biomarker + prior_tx + albumin,
+  data = dat
+)
+
+cox_fit <- survival::coxph(
+  survival::Surv(time, status) ~ trt + source + age + sex + ecog + stage + biomarker + prior_tx + albumin,
+  data = dat,
+  ties = "efron"
+)
+
+
+# 只提取治疗变量 trt 的效应，汇总成统一结果表。
+main_results_raw <- dplyr::bind_rows(
+  extract_tidy_result(cox_fit, outcome = "生存结局", effect = "HR", exponentiate = TRUE),
+  extract_tidy_result(logit_fit, outcome = "二分类结局", effect = "OR", exponentiate = TRUE),
+  extract_tidy_result(lm_fit, outcome = "连续结局", effect = "Mean difference")
+)
+```
+
+## 结果
+
+```{r main-analysis-code, echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+main_results <- format_freq_result_table(main_results_raw)
+knitr::kable(
+  main_results,
+  caption = "Table 3. 传统多变量回归结果",
+  align = "llcccc"
+)
+```
+
+传统多变量回归分析结果显示，在控制来源异质性指标及基线协变量后，当前单臂试验治疗组相对于外部对照总体表现出一致的获益趋势。对于生存结局，治疗组的风险比（HR）为 0.540，95% 置信区间为 0.430–0.680，P \< 0.001，提示治疗组的事件风险约较外部对照降低 46%。对于二分类结局，治疗组的优势比（OR）为 0.390，95% 置信区间为 0.250–0.610，P \< 0.001，说明在调整协变量后，治疗组发生该二分类事件的优势明显低于外部对照。对于连续结局，治疗效应估计值为 -5.430，95% 置信区间为 -6.690 至 -4.160，P \< 0.001，表明治疗组在该连续指标上的平均水平显著低于外部对照。
+
+总体来看，三类结局的结果方向一致，且置信区间均未跨越无效值，提示在传统多变量回归调整框架下，治疗组相对于外部对照显示出统计学显著的疗效差异。这说明即使在存在基线不平衡和来源差异的情况下，通过在结局模型中纳入治疗变量、来源异质性指标及基线协变量，可以观察到较稳定的治疗效应信号。不过，这一结果仍建立在结局模型设定正确的前提之上，因此后续还需要结合 IPTW 和贝叶斯借用分析，进一步考察结论在不同调整策略下的稳健性。
+
+# 方法二：IPTW 加权后结合回归分析
+
+## 理论简介
+
+通过IPTW加权，治疗效应的估计不再主要依赖将所有基线协变量逐一放入结局模型中，而是依赖 IPTW 先行实现处理组与对照组之间的协变量平衡。随后，在加权样本上拟合结局模型，以估计加权后的治疗效应。由于本研究中外部对照来自两个不同来源，且来源之间可能仍存在系统性差异，因此在结局模型中继续保留来源异质性指标 $Z_i$，用于控制 `External_B` 相对于 `External_A` 的额外来源偏移。这样做的含义是：IPTW 负责平衡 treatment 层面的基线协变量分布，而结局模型中的 $Z_i$ 则进一步处理多来源外部对照内部的异质性。
+
+加权后的三类结局模型分别如下。
+
+### 加权 Cox 模型
+
+对于生存结局，采用加权 Cox 比例风险模型：
+
+$$
+h_i(t)=h_0(t)\exp(\beta_1T_i+\beta_2Z_i)
+$$
+
+其中，$h_0(t)$ 为基线风险函数，$\beta_1$ 表示治疗变量的对数风险比，$\beta_2$ 表示来源异质性指标的效应。治疗效应通常解释为：$HR=\exp(\beta_1)$若 $HR<1$，表示治疗组在加权后的比较下具有更低的事件风险。
+
+### 加权 Logistic 模型
+
+对于二分类结局，采用加权 Logistic 回归模型：
+
+$$
+\text{logit}\{P(Y_i=1\mid T_i,Z_i)\} = \beta_0 + \beta_1T_i + \beta_2Z_i
+$$
+
+其中，$\beta_1$ 表示治疗变量对应的对数优势比，治疗效应可解释为：$OR=\exp(\beta_1)$。若 $OR<1$，表示治疗组事件发生的优势低于外部对照。
+
+### 加权线性模型
+
+对于连续结局，采用加权线性回归模型：
+
+$$
+Y_i=\beta_0+\beta_1T_i+\beta_2Z_i+\varepsilon_i
+$$
+
+其中，$\beta_1$ 表示治疗组相对于外部对照的调整后均值差，$\beta_2$ 表示来源异质性指标的影响，$\varepsilon_i$ 为随机误差项。若 $\beta_1<0$ 或 $\beta_1>0$，则分别表示治疗组平均结局低于或高于外部对照，具体临床意义需结合结局方向解释。
+
+总体而言，IPTW 加权后结合回归分析的方法兼具两方面特点：一方面，它通过倾向性评分权重改善了处理组与对照组之间的协变量平衡，从而减轻了混杂偏倚；另一方面，它又通过在结局模型中保留来源异质性指标，进一步考虑了多来源外部对照内部的系统差异。因此，这种方法可被理解为一种“先平衡、后建模”的分析策略，通常较单纯依赖结局模型设定的传统回归方法更具因果推断意义。
+
+## 代码
+
+与方法一直接在回归模型中纳入协变量不同，方法二采用“先加权、后建模”的思路。这里首先利用 `WeightIt::weightit()` 基于基线协变量估计倾向性评分，并构造 IPTW 权重。参数`formula`表示拟合模型的公式，`method = "glm"`表示使用logistic模型计算倾向性评分`estimand = "ATE"` 表示目标为总体平均处理效应，`stabilize = TRUE` 表示使用稳定化权重，以减小极端权重带来的估计不稳定性。随后，再对权重进行适当截尾，得到最终分析中使用的 `sw_trim`。在后续的 Cox 回归、logistic 回归和线性回归中，这些权重通过 `weights = sw_trim` 进入模型，从而使治疗效应是在加权后的伪总体中进行估计。这样做的主要目的，是先尽可能平衡治疗组与外部对照在可观测基线协变量上的差异，再对三类结局分别进行回归分析。
+
+```{r ps-outcome-code, echo=TRUE, message=FALSE, warning=FALSE, paged.print=FALSE}
+# 先基于基线协变量构造 IPTW。
+dat <- read_analysis_data("demo_data_advanced.xlsx")
+w_out <- WeightIt::weightit(
+  formula = ps_formula,
+  data = dat,
+  method = "glm",
+  estimand = "ATE",
+  stabilize = TRUE
+)
+dat$sw_trim <- trim_iptw_weights(w_out$weights)
+
+# 在加权样本上分别拟合三类结局模型，并保留 source 作为来源调整项。
+cox_fit <- survival::coxph(
+  survival::Surv(time, status) ~ trt + source,
+  data = dat,
+  weights = sw_trim,
+  robust = TRUE
+)
+
+logit_fit <- suppressWarnings(
+  glm(
+    binary_y ~ trt + source,
+    data = dat,
+    family = binomial(),
+    weights = sw_trim
+  )
+)
+
+lm_fit <- lm(
+  cont_y ~ trt + source,
+  data = dat,
+  weights = sw_trim
+)
+
+# 统一整理 trt 的效应估计。
+main_results2_raw <- dplyr::bind_rows(
+  extract_tidy_result(cox_fit, outcome = "生存结局", effect = "HR", exponentiate = TRUE),
+  extract_tidy_result(logit_fit, outcome = "二分类结局", effect = "OR", exponentiate = TRUE),
+  extract_tidy_result(lm_fit, outcome = "连续结局", effect = "Mean difference")
+)
+```
+
+## 结果
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+main_results2 <- format_freq_result_table(main_results2_raw)
+knitr::kable(
+  main_results2,
+  caption = "Table 4. IPTW 加权后结合回归分析结果",
+  align = "llcccc"
+)
+```
+
+IPTW 加权后结合回归分析结果显示，在通过倾向性评分加权改善基线可比性后，当前单臂试验治疗组相对于外部对照总体仍表现出一致且显著的获益趋势。对于生存结局，治疗组的风险比（HR）为 0.570，95% 置信区间为 0.440–0.740，P \< 0.001，提示治疗组事件风险较外部对照降低约 43%。对于二分类结局，治疗组的优势比（OR）为 0.420，95% 置信区间为 0.280–0.620，P \< 0.001，说明治疗组发生该二分类事件的优势明显低于外部对照。对于连续结局，治疗效应估计值为 -5.970，95% 置信区间为 -7.720 至 -4.230，P \< 0.001，表明治疗组在该连续指标上的平均水平显著低于外部对照。三类结局的效应方向一致，且区间估计均未跨越无效值，说明在 IPTW 加权后的分析框架下，治疗组的疗效优势仍然稳定存在
+
+# 方法三：IPTW + power prior
+
+## 理论简介
+
+在单臂试验结合外部对照的分析中，仅通过 IPTW 改善基线协变量平衡，虽然可以在一定程度上降低混杂偏倚，但并未进一步区分“当前研究数据”和“外部数据”在证据可靠性上的差异。贝叶斯信息借用方法的优势在于：可以在模型中显式控制外部信息对最终推断的贡献程度，从而在利用外部数据的同时，避免因过度借用而带来的偏倚风险。power prior 是这一类方法中最常用的实现形式之一。
+
+power prior 的基本思想是：将外部数据的似然函数按某个折扣参数进行加权，使其以“部分信息”的形式进入后验分布。其一般形式为：
+
+$$
+\pi(\theta\mid D,D_0,a_0) \propto L(\theta\mid D)\,L(\theta\mid D_0)^{a_0}\,\pi_0(\theta)
+$$
+
+其中：
+
+-   $D$：当前研究数据；
+-   $D_0$：外部数据；
+-   $\theta$：待估计的模型参数；
+-   $L(\theta\mid D)$：当前研究数据的似然函数；
+-   $L(\theta\mid D_0)$：外部数据的似然函数；
+-   $a_0\in[0,1]$：借用强度参数；
+-   $\pi_0(\theta)$：参数的先验分布。
+
+参数 $a_0$ 控制外部数据对后验推断的影响程度。当 $a_0=0$ 时，外部数据完全不参与推断；当 $a_0=1$ 时，外部数据按完整权重参与分析；当 $0<a_0<1$ 时，则表示只对外部信息进行部分借用。因此，$a_0$ 可以理解为外部证据“有效样本量折扣”的一个近似控制参数。
+
+在本示例中，先利用 IPTW 对 treatment 层面的基线协变量差异进行平衡，再在贝叶斯结局模型中通过观测层权重实现 fixed power prior。具体地，先得到IPTW 权重 $w_i^*$，然后再根据个体是否属于外部对照施加折扣系数，即：
+
+$$
+{w_{i,treat}} = w_i^* \times 1, {w_{i,control}} = w_i^* \times a_0
+$$
+
+这意味着：当前治疗组样本保留完整权重，而外部对照样本则在 IPTW 权重的基础上进一步乘以 $a_0$，从而降低其对总似然的贡献。这时IPTW结合power prior的先验形式转变为;
+
+$$
+\pi(\theta\mid D,D_0,a_0) \propto L(\theta\mid D)^{w_{i,treat}}\,L(\theta\mid D_0)^{w_{i,control}}\,\pi_0(\theta)
+$$
+
+本示例中设定 $a_0=0.5$，表示外部对照信息以约一半的强度参与后验推断（在实际案例中应该根据根据实际情况，通过统计模拟评估操作特征进行设置，并对折扣参数的设置的稳健性进行分析）。这样做的目的是在利用外部数据提高估计精度的同时，保留对外部数据可交换性不足、来源异质性和潜在偏倚的谨慎态度。
+
+## 结局模型
+
+在本示例中，三类结局分别采用与其分布特征相匹配的贝叶斯模型，并在模型拟合中使用上述 $\text{bayes }{w_i}$ 作为观测层权重。需要说明的是，这里的治疗效应主要由治疗指示变量 $T_i$ 对应的系数 $\beta_1$ 表示，因此各模型的重点都是对 $\beta_1$ 的后验分布进行估计，并进一步转换为可解释的效应量指标。
+
+### 二分类结局：Bernoulli / logistic
+
+对于二分类结局，设 $Y_i$ 为个体 $i$ 的事件指示变量，则有：
+
+$$
+Y_i\sim \text{Bernoulli}(p_i),\qquad
+\text{logit}(p_i)=\beta_0+\beta_1T_i
+$$
+
+其中：
+
+-   $p_i$ 表示个体 $i$ 发生事件的概率；
+-   $\beta_0$ 为截距项；
+-   $\beta_1$ 为治疗变量 $T_i$ 的回归系数。
+
+在该模型中，$\beta_1$ 表示治疗组相对于外部对照的对数优势比，因此治疗效应可表示为：$OR=\exp(\beta_1)$。在贝叶斯框架下，最终关注的是 $OR$ 的后验分布，例如后验均值、后验中位数、95% 后验可信区间，以及 $P(OR<1\mid \text{data})$ 这类后验获益概率。
+
+### 连续结局：Normal linear model
+
+对于连续结局，设 $Y_i$ 为个体 $i$ 的连续型观测值，则模型写为：
+
+$$
+Y_i\sim N(\mu_i,\sigma^2),\qquad
+\mu_i=\beta_0+\beta_1T_i
+$$
+
+其中：
+
+-   $\mu_i$ 为个体 $i$ 的期望结局值；
+-   $\beta_0$ 为截距项；
+-   $\beta_1$ 为治疗变量对应的均值差参数；
+-   $\sigma^2$ 为残差方差。
+
+在该模型中，治疗效应即为 $\beta_1$，表示治疗组相对于外部对照的平均结局差异。贝叶斯分析中通常报告 $\beta_1$ 的后验均值、后验中位数、95% 后验可信区间，以及相应方向上的后验概率，例如 $P(\beta_1<0\mid \text{data})$ 或 $P(\beta_1>0\mid \text{data})$，具体方向取决于结局的临床定义。
+
+### 生存结局：Piecewise exponential model
+
+对于生存结局，本示例采用分段指数模型（piecewise exponential model）。其基本思想是：将随访时间划分为若干区间，并假设在每个时间段内基线风险保持常数，但不同区间之间允许基线风险变化。这样既保留了对时间风险变化的灵活刻画，又可以将生存数据转化为类似 Poisson 回归的形式进行贝叶斯建模。
+
+设个体 $i$ 在第 $j$ 个时间段内的事件计数为 $N_{ij}$，则有：
+
+$$
+N_{ij}\sim \text{Poisson}(\mu_{ij})
+$$
+
+并满足：
+
+$$
+\log(\mu_{ij}) = \log(t_{ij}) + \alpha_j + \beta_1T_i
+$$
+
+其中：
+
+-   $t_{ij}$ 为个体 $i$ 在第 $j$ 个时间段内的暴露时间；
+-   $\log(t_{ij})$ 作为 offset 项进入模型；
+-   $\alpha_j$ 表示第 $j$ 个时间段的基线对数风险；
+-   $\beta_1$ 表示治疗变量的对数风险比。
+
+因此，治疗效应可表示为：$HR=\exp(\beta_1)$该模型的优点在于，它可以较自然地纳入观测权重，并在贝叶斯框架下对治疗效应的后验分布进行估计。最终可报告 $HR$ 的后验均值、后验中位数、95% 后验可信区间，以及 $P(HR<1\mid \text{data})$ 作为治疗获益的后验概率。
+
+总体而言，本示例中的 IPTW + 贝叶斯信息借用方法可以理解为两步结合的分析框架：第一步通过 IPTW 尽可能改善治疗组与外部对照在可观测基线协变量上的可比性；第二步再通过 fixed power prior 对外部对照信息实施折扣借用，从而避免将外部数据视为与当前研究完全等价的信息来源。相较于单纯的频率学派 IPTW 分析，这一方法不仅能够给出效应估计和区间估计，还能进一步提供后验获益概率，因此在证据综合和决策支持层面具有更强的解释优势。
+
+## 代码
+
+这里的折扣参数为 `a0`，参数`use_ps_weight`可用于设置是否选择使用倾向性评分加权，是则先通过 `WeightIt::weightit()` 估计 IPTW，并经截尾后得到 `sw_trim`；随后再根据个体是否属于当前治疗组或外部对照，附加 power prior 折扣系数，形成 `bayes_w = sw_trim × source_discount`。因此，这里的权重同时包含两层含义：一层是 IPTW 对基线不平衡的校正，另一层是 power prior 对外部证据借用强度的控制。
+
+在模型拟合方面，本段代码使用 `brms::brm()` 在贝叶斯框架下分别拟合三类结局模型。二分类结局采用 Bernoulli-logit 模型，连续结局采用 Gaussian 线性模型，生存结局则先通过 `survSplit()` 将随访时间拆分为若干区间，再用 Poisson 形式实现 piecewise exponential 模型。模型拟合完成后，再从治疗变量 `trt` 的后验抽样中提取效应估计，并分别转换为 OR、均值差和 HR，以便与前两种方法的结果进行比较。
+
+```{r bayes-core-code, echo=TRUE, message=FALSE, warning=FALSE, paged.print=FALSE}
+# =========================================================
+# 0. User parameters
+# =========================================================
+data_path   <- "demo_data_advanced.xlsx"
+a0          <- 0.5
+trim_lower  <- 0.01
+trim_upper  <- 0.99
+cut_points  <- c(6, 12, 18, 24, 30)
+use_ps_weight <- TRUE
+
+chains  <- 4
+iter    <- 2000
+warmup  <- 1000
+cores   <- min(4, parallel::detectCores())
+seed    <- 20260407
+
+# =========================================================
+# 1. Read and prepare data
+# =========================================================
+# 读取数据，先构造 IPTW，再叠加 power prior 折扣权重。
+dat <- read_analysis_data(data_path)
+
+if (use_ps_weight) {
+  w_out <- WeightIt::weightit(
+    formula = ps_formula,
+    data = dat,
+    method = "glm",
+    estimand = "ATE",
+    stabilize = TRUE
+  )
+  dat$sw <- w_out$weights
+  dat$sw_trim <- trim_iptw_weights(dat$sw, trim_lower = trim_lower, trim_upper = trim_upper)
+} else {
+  dat$sw_trim <- 1
+}
+
+dat$source_discount <- ifelse(dat$trt == 1, 1, a0)
+dat$bayes_w <- dat$sw_trim * dat$source_discount
+
+# =========================================================
+# 2. Priors
+# =========================================================
+# 为三类结局分别设置弱信息先验。
+priors_binary <- c(
+  brms::set_prior("normal(0, 2.5)", class = "Intercept"),
+  brms::set_prior("normal(0, 2.5)", class = "b")
+)
+
+priors_cont <- c(
+  brms::set_prior("normal(0, 10)", class = "Intercept"),
+  brms::set_prior("normal(0, 10)", class = "b"),
+  brms::set_prior("student_t(3, 0, 10)", class = "sigma")
+)
+
+priors_surv <- c(
+  brms::set_prior("normal(0, 2.5)", class = "Intercept"),
+  brms::set_prior("normal(0, 2.5)", class = "b")
+)
+
+# =========================================================
+# 3. Binary outcome model
+# =========================================================
+# 二分类结局直接从后验抽样中转换到 OR 尺度。
+fit_binary <- brms::brm(
+  formula = brms::bf(binary_y | weights(bayes_w) ~ trt),
+  data    = dat,
+  family  = bernoulli(link = "logit"),
+  prior   = priors_binary,
+  chains  = chains,
+  iter    = iter,
+  warmup  = warmup,
+  cores   = cores,
+  seed    = seed,
+  backend = "rstan",
+  refresh = 0
+)
+
+binary_result <- posterior_summary(
+  draws = as.numeric(posterior::as_draws_df(fit_binary)$b_trt),
+  outcome = "Binary",
+  effect = "OR",
+  transform = exp,
+  benefit_rule = function(x) x < 1
+)
+
+# =========================================================
+# 4. Continuous outcome model
+# =========================================================
+# 连续结局直接汇总 trt 系数的后验分布。
+fit_cont <- brms::brm(
+  formula = brms::bf(cont_y | weights(bayes_w) ~ trt),
+  data    = dat,
+  family  = gaussian(),
+  prior   = priors_cont,
+  chains  = chains,
+  iter    = iter,
+  warmup  = warmup,
+  cores   = cores,
+  seed    = seed,
+  backend = "rstan",
+  refresh = 0
+)
+
+cont_result <- posterior_summary(
+  draws = as.numeric(posterior::as_draws_df(fit_cont)$b_trt),
+  outcome = "Continuous",
+  effect = "Mean difference",
+  transform = identity,
+  benefit_rule = function(x) x < 0
+)
+
+# =========================================================
+# 5. Survival outcome model
+# =========================================================
+# 生存结局先拆成 piecewise exponential 数据，再拟合 Poisson 形式的 brms 模型。
+make_piecewise_data <- function(data, cut_points) {
+  max_time <- max(data$time, na.rm = TRUE)
+  cuts <- sort(unique(cut_points[cut_points < max_time]))
+
+  split_dat <- survival::survSplit(
+    data = data,
+    cut = cuts,
+    end = "time",
+    event = "status",
+    start = "tstart",
+    episode = "interval_id"
+  )
+
+  split_dat$tstop <- split_dat$time
+  split_dat$exposure <- split_dat$tstop - split_dat$tstart
+  split_dat$interval <- factor(split_dat$interval_id)
+  split_dat$event_piece <- split_dat$status
+  split_dat
+}
+
+surv_dat <- make_piecewise_data(dat, cut_points = cut_points)
+
+fit_surv <- brms::brm(
+  formula = brms::bf(event_piece | weights(bayes_w) ~ trt + interval + offset(log(exposure))),
+  data    = surv_dat,
+  family  = poisson(),
+  prior   = priors_surv,
+  chains  = chains,
+  iter    = iter,
+  warmup  = warmup,
+  cores   = cores,
+  seed    = seed,
+  backend = "rstan",
+  refresh = 0
+)
+
+surv_result <- posterior_summary(
+  draws = as.numeric(posterior::as_draws_df(fit_surv)$b_trt),
+  outcome = c("Survival"),
+  effect = "HR",
+  transform = exp,
+  benefit_rule = function(x) x < 1
+)
+```
+
+## 结果
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+main_results_borrow_raw <- dplyr::bind_rows(
+  surv_result,
+  binary_result,
+  cont_result
+)
+main_results_borrow <- format_bayes_result_table(
+  main_results_borrow_raw
+)
+knitr::kable(
+  main_results_borrow,
+  caption = "Table 5. IPTW + 贝叶斯信息借用(power prior)",
+  align = "llcccc")
+```
+
+在 IPTW 基础上进一步结合 fixed power prior 进行贝叶斯信息借用后，三类结局的分析结果均一致支持当前单臂试验治疗组相对于外部对照具有获益。对于二分类结局，治疗效应的后验 OR 均值为 0.404，中位数为 0.397，95% 后验可信区间为 0.266–0.585，且后验获益概率为 1.000，提示在后验分布下，治疗组发生该事件的风险低于外部对照具有极高的后验支持度。对于连续结局，治疗效应的后验均值差为 -6.702，中位数为 -6.724，95% 后验可信区间为 -8.439 至 -4.919；在预先定义“结局值降低代表获益”的前提下，上述结果表明治疗组在该连续指标上优于外部对照。对于生存结局，后验 HR 均值为 0.527，中位数为 0.524，95% 后验可信区间为 0.422–0.651，后验获益概率为 1.000，说明在引入外部信息折扣借用后，治疗组事件风险低于外部对照的证据仍然充分。
+
+# 三类结局结果汇总与比较
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+all_outcome_results <- dplyr::bind_rows(
+  add_analysis_method_col(main_results, "传统多变量回归调整"),
+  add_analysis_method_col(main_results2, "IPTW 加权后结合回归分析"),
+  add_analysis_method_col(main_results_borrow, "IPTW + power prior")
+)
+knitr::kable(
+  all_outcome_results,
+  caption = "Table 6. 三类结局结果汇总与比较",
+  align = "lllccccc"
+)
+```
+
+三个方法的结果整体上高度一致，均表明当前单臂试验治疗组相对于外部对照具有稳定的获益趋势。传统多变量回归分析中，生存结局 HR 为 0.540，二分类结局 OR 为 0.390，连续结局均值差为 -5.430；IPTW 加权后结合回归分析中，HR 为 0.570，OR 为 0.420，均值差为 -5.970；在 IPTW 基础上进一步结合 fixed power prior 的贝叶斯信息借用分析中，后验均值对应的 HR 为 0.527，OR 为 0.404，均值差为 -6.702。三类方法下，生存结局的效应估计均明显小于 1，二分类结局的 OR 均小于 1，连续结局的均值差均为负值，说明三种分析框架对治疗效应方向的判断完全一致，且均支持治疗组优于外部对照。
+
+贝叶斯信息借用分析的结果与前两种方法保持一致，且效应量级总体相近，说明在对外部对照信息进行折扣借用后，研究结论并未发生实质性改变。这种跨方法的一致性增强了结果的稳健性。相比前两种方法，贝叶斯借用方法的优势在于，它不仅能够在 IPTW 已经改善基线可比性的基础上，进一步通过 power prior 对外部对照证据强度进行显式控制，从而避免将外部信息视为与当前研究完全等价的证据，还能够直接给出后验可信区间和后验获益概率，使疗效证据的表达从“是否显著”进一步拓展到“治疗获益有多大概率成立”。因此，在多来源外部对照场景下，贝叶斯借用方法不仅保留了较好的稳健性，也在证据整合、结果解释和决策支持层面体现出更强的优势。
+
+# 讨论
+
+本示例展示了一个较完整的单臂试验 + 多来源外部对照分析路径，具有以下特点：
+
+1.  同时覆盖生存、二分类和连续三类常见结局；
+2.  同时展示频率学派与贝叶斯两类分析范式；
+3.  同时展示未调整基线表与 IPTW 后基线表，便于从设计与分析两个层面理解协变量校正过程。
+
+在实际研究中，还应进一步考虑以下问题：
+
+-   倾向性评分模型设定是否稳健；
+-   权重分布是否存在极端值；
+-   外部来源之间是否还需要更细致的分层或分层借用；
+-   power prior 参数 $a_0$ 是否需要做敏感性分析；
+-   对于多来源外部对照，是否需要更正式地建立层级模型或 commensurate prior 框架。
