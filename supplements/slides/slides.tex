@@ -1,0 +1,367 @@
+% !TeX program = xelatex
+\documentclass[UTF8,aspectratio=169,fontset=fandol]{ctexbeamer}
+\usepackage{amsmath,amssymb}
+\usepackage[most]{tcolorbox}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning}
+\usepackage{xcolor}
+\usepackage{bookmark}
+\usepackage{hyperref}
+
+% ---------- colours ----------
+\definecolor{bg}{HTML}{F3F4F6}
+\definecolor{linegray}{HTML}{CBD5E1}
+\definecolor{textgray}{HTML}{667085}
+\definecolor{dark}{HTML}{0F172A}
+\definecolor{blue1}{HTML}{2563EB}
+\definecolor{blue2}{HTML}{E8F0FF}
+\definecolor{orange1}{HTML}{C2410C}
+\definecolor{orange2}{HTML}{FBECDD}
+\definecolor{mid1}{HTML}{F8FAFC}
+\definecolor{mid2}{HTML}{E5E7EB}
+\definecolor{arrowgray}{HTML}{98A2B3}
+
+% ---------- beamer style ----------
+\setbeamertemplate{navigation symbols}{}
+\setbeamercolor{normal text}{fg=dark,bg=bg}
+\setbeamercolor{frametitle}{fg=dark,bg=bg}
+\setbeamerfont{frametitle}{series=\bfseries,size=\Large}
+\setbeamertemplate{footline}{
+  \leavevmode
+  \hbox to \paperwidth{\hfil\footnotesize\color{textgray}Reference: \href{https://mc-stan.org/docs/reference-manual/}{mc-stan.org/docs/reference-manual/}\hfil}
+  \vspace{1.2mm}
+}
+
+\setlength{\parindent}{0pt}
+\setlength{\emergencystretch}{1.5em}
+
+% ---------- tcolorbox styles ----------
+\tcbset{
+  enhanced,
+  boxrule=0.8pt,
+  arc=3mm,
+  left=4mm,right=4mm,top=3mm,bottom=3mm,
+  colback=white,
+  colframe=black,
+}
+
+\newtcolorbox{leftpanel}{
+  width=\linewidth,
+  height=0.47\textheight,
+  colback=blue2,
+  colframe=blue1!60,
+  before upper=\raggedright,
+}
+
+\newtcolorbox{midpanel}{
+  width=\linewidth,
+  height=0.30\textheight,
+  colback=white,
+  colframe=mid2,
+  before upper=\centering,
+}
+
+\newtcolorbox{rightpanel}{
+  width=\linewidth,
+  height=0.47\textheight,
+  colback=orange2,
+  colframe=orange1!60,
+  before upper=\raggedright,
+}
+
+\newtcolorbox{rightpaneltall}{
+  width=\linewidth,
+  height=0.52\textheight,
+  colback=orange2,
+  colframe=orange1!60,
+  before upper=\raggedright,
+}
+
+\newtcolorbox{smallgray}{
+  width=0.27\linewidth,
+  colback=mid1,
+  colframe=mid2,
+  halign=center,
+  boxsep=1mm,
+  top=1mm,bottom=1mm,left=1mm,right=1mm,
+}
+
+\newtcolorbox{smallgraywide}{
+  width=0.36\linewidth,
+  colback=mid1,
+  colframe=mid2,
+  halign=center,
+  boxsep=1mm,
+  top=1mm,bottom=1mm,left=1mm,right=1mm,
+}
+
+\newtcolorbox{smallgrayxwide}{
+  width=0.40\linewidth,
+  colback=mid1,
+  colframe=mid2,
+  halign=center,
+  boxsep=1mm,
+  top=1mm,bottom=1mm,left=1mm,right=1mm,
+}
+
+\newcommand{\midpanelrowgap}{\vspace{-0.35em}}
+\newcommand{\midpaneltopgap}{\vspace{0.35em}}
+\newcommand{\midpanelminitopgap}{\vspace{0.55em}}
+
+\begin{document}
+
+% =========================================================
+% Slide 1
+% =========================================================
+\begin{frame}[t,shrink=10]
+\vspace{0.2em}
+{\color{textgray}\Large 当前Rmd的可见层}\par
+\vspace{0.35em}
+{\color{linegray}\rule{\textwidth}{0.5pt}}\par
+\vspace{0.30em}
+
+{\Large\bfseries 1. 当前 Rmd 原型：采样实现细节被高层接口隐藏}\par
+\vspace{0.7em}
+
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.29\textwidth}
+\begin{leftpanel}
+{\fontsize{14}{16}\selectfont\bfseries\color{blue1} Rmd / 脚本入口}\par
+{\small\color{textgray} 用户直接看到的部分}\par
+\vspace{0.25em}
+
+\footnotesize
+\textbullet\ 数据准备与拼接\\
+\textbullet\ 模型参数与配置\\
+\textbullet\ 调用 fit / sampling\\
+\textbullet\ 结果表格与图形
+\end{leftpanel}
+\end{column}
+
+\begin{column}{0.03\textwidth}
+\vspace*{0.17\textheight}
+{\fontsize{10}{10}\selectfont\color{arrowgray}$\rightarrow$}
+\end{column}
+
+\begin{column}{0.33\textwidth}
+\centering
+{\small\color{textgray} 表面可见}\par
+\vspace{0.1em}
+
+\begin{midpanel}
+{\fontsize{13}{15}\selectfont\bfseries Rmd 组织层}\par
+\vspace{0.35em}
+
+{\small 主要呈现分析流程，不展开采样实现}\par
+\midpaneltopgap
+{\large\color{arrowgray}$\downarrow$}\par
+\midpanelminitopgap
+
+\makebox[\linewidth][c]{%
+\begin{smallgrayxwide}\tiny\bfseries model call\end{smallgrayxwide}%
+\hspace{0.2em}%
+\begin{smallgraywide}\tiny\bfseries data prep\end{smallgraywide}%
+}
+\midpanelrowgap
+
+\makebox[\linewidth][c]{%
+\begin{smallgraywide}\tiny\bfseries summary\end{smallgraywide}%
+\hspace{0.2em}%
+\begin{smallgraywide}\tiny\bfseries plots\end{smallgraywide}%
+}
+\end{midpanel}
+\end{column}
+
+\begin{column}{0.03\textwidth}
+\vspace*{0.17\textheight}
+{\fontsize{10}{10}\selectfont\color{arrowgray}$\rightarrow$}
+\end{column}
+
+\begin{column}{0.29\textwidth}
+\begin{rightpanel}
+{\fontsize{13}{15}\selectfont\bfseries\color{orange1} 被封装的部分}\par
+{\small\color{textgray} MCMC 细节在 Stan 接口内部}\par
+\vspace{0.25em}
+
+\footnotesize
+\textbullet\ chain / warmup 设置\\
+\textbullet\ HMC / NUTS 调用细节\\
+\textbullet\ diagnostics 生成方式\\
+\textbullet\ draws 存储与读取接口
+\end{rightpanel}
+\end{column}
+\end{columns}
+
+\end{frame}
+
+% =========================================================
+% Slide 2
+% =========================================================
+\begin{frame}[t,shrink=10]
+\vspace{0.2em}
+{\color{textgray}\Large 实际执行链路}\par
+\vspace{0.35em}
+{\color{linegray}\rule{\textwidth}{0.5pt}}\par
+\vspace{0.30em}
+
+{\Large\bfseries 2. 实际执行链路：R 接口调用 Stan，Stan 模型被编译后执行}\par
+\vspace{0.7em}
+
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.29\textwidth}
+\begin{leftpanel}
+{\fontsize{14}{16}\selectfont\bfseries\color{blue1} R / RStan 入口}\par
+{\small\color{textgray} 生成输入并发起调用}\par
+\vspace{0.25em}
+
+\footnotesize
+\textbullet\ 组装 data / init\\
+\textbullet\ 传入 sampling config\\
+\textbullet\ 调用 Stan 接口\\
+\textbullet\ 接收 draws / summary
+\end{leftpanel}
+\end{column}
+
+\begin{column}{0.03\textwidth}
+\vspace*{0.17\textheight}
+{\fontsize{10}{10}\selectfont\color{arrowgray}$\rightarrow$}
+\end{column}
+
+\begin{column}{0.33\textwidth}
+\centering
+{\small\color{textgray} 中间执行层}\par
+\vspace{0.1em}
+
+\begin{midpanel}
+{\fontsize{13}{15}\selectfont\bfseries Stan 编译与执行层}\par
+\vspace{0.35em}
+
+{\small Stan 代码经工具链编译为 C++，再由 Stan sampler 执行}\par
+\midpaneltopgap
+{\large\color{arrowgray}$\downarrow$}\par
+\midpanelminitopgap
+
+\makebox[\linewidth][c]{%
+\begin{smallgrayxwide}\tiny\bfseries .stan\end{smallgrayxwide}%
+\hspace{0.2em}%
+\begin{smallgraywide}\tiny\bfseries C++ model\end{smallgraywide}%
+}
+\midpanelrowgap
+
+\makebox[\linewidth][c]{%
+\begin{smallgraywide}\tiny\bfseries runtime\end{smallgraywide}%
+\hspace{0.2em}%
+\begin{smallgraywide}\tiny\bfseries HMC / NUTS\end{smallgraywide}%
+}
+\end{midpanel}
+\end{column}
+
+\begin{column}{0.03\textwidth}
+\vspace*{0.17\textheight}
+{\fontsize{10}{10}\selectfont\color{arrowgray}$\rightarrow$}
+\end{column}
+
+\begin{column}{0.29\textwidth}
+\begin{rightpanel}
+{\fontsize{13}{15}\selectfont\bfseries\color{orange1} Stan sampler backend}\par
+{\small\color{textgray} 实际采样引擎}\par
+\vspace{0.25em}
+
+\footnotesize
+\textbullet\ 似然与先验评估\\
+\textbullet\ HMC / NUTS 采样\\
+\textbullet\ warmup / chains\\
+\textbullet\ diagnostics / posterior draws
+\end{rightpanel}
+\end{column}
+\end{columns}
+
+\end{frame}
+
+% =========================================================
+% Slide 3
+% =========================================================
+\begin{frame}[t,shrink=10]
+\vspace{0.2em}
+{\color{textgray}\Large 目标分工}\par
+\vspace{0.35em}
+{\color{linegray}\rule{\textwidth}{0.5pt}}\par
+\vspace{0.30em}
+
+{\Large\bfseries 3. 目标：统计方与工程 / 加密计算方的模块边界清晰化}\par
+\vspace{0.7em}
+
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.33\textwidth}
+\begin{leftpanel}
+{\fontsize{14}{16}\selectfont\bfseries\color{blue1} 统计方负责}\par
+{\small\color{textgray} 模型与统计口径}\par
+\vspace{0.25em}
+
+\footnotesize
+\textbullet\ model\_spec.md\\
+\textbullet\ model.stan\\
+\textbullet\ data.json schema\\
+\textbullet\ prior / likelihood / estimand\\
+\textbullet\ 诊断与验收标准
+\end{leftpanel}
+\end{column}
+
+\begin{column}{0.03\textwidth}
+\vspace*{0.17\textheight}
+{\fontsize{10}{10}\selectfont\color{arrowgray}$\leftrightarrow$}
+\end{column}
+
+\begin{column}{0.29\textwidth}
+\centering
+{\small\color{textgray} 共享边界}\par
+\vspace{0.1em}
+
+\begin{midpanel}
+{\fontsize{13}{15}\selectfont\bfseries 共享契约层}\par
+\vspace{0.35em}
+
+{\small 通过标准化模型工件与输入输出契约协作}\par
+\midpaneltopgap
+{\large\color{arrowgray}$\downarrow$}\par
+\midpanelminitopgap
+
+\makebox[\linewidth][c]{%
+\begin{smallgrayxwide}\tiny\bfseries input schema\end{smallgrayxwide}%
+\hspace{0.2em}%
+\begin{smallgraywide}\tiny\bfseries model artifact\end{smallgraywide}%
+}
+\midpanelrowgap
+
+\makebox[\linewidth][c]{%
+\begin{smallgraywide}\tiny\bfseries config schema\end{smallgraywide}%
+\hspace{0.2em}%
+\begin{smallgraywide}\tiny\bfseries output schema\end{smallgraywide}%
+}
+\end{midpanel}
+\end{column}
+
+\begin{column}{0.03\textwidth}
+\vspace*{0.17\textheight}
+{\fontsize{10}{10}\selectfont\color{arrowgray}$\leftrightarrow$}
+\end{column}
+
+\begin{column}{0.33\textwidth}
+\begin{rightpaneltall}
+{\fontsize{13}{15}\selectfont\bfseries\color{orange1} 工程 / 加密计算方负责}\par
+{\small\color{textgray} 安全执行与工程落地}\par
+\vspace{0.25em}
+
+\footnotesize
+\textbullet\ 标准输入接入\\
+\textbullet\ CmdStan / executable 调度\\
+\textbullet\ 安全运行环境\\
+\textbullet\ 日志、审计与结果回传\\
+\textbullet\ 运行失败处理与追溯
+\end{rightpaneltall}
+\end{column}
+\end{columns}
+
+\end{frame}
+
+\end{document}
