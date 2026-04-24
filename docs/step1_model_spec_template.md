@@ -106,24 +106,45 @@ $$
 \text{logit}(p_i) = \alpha + \beta_{\text{trt}} \cdot \text{trt}_i + \sum_k \beta_k \cdot X_{k,i}
 $$
 
-#### 4.2.2 Weighting
+#### 4.2.2 加权（Weighting）
+
+第 $i$ 个个体的分析权重定义为：
+
 $$
-W_i = \text{IPTW}_i \times \text{source\_discount}_i
+W_i = \mathrm{IPTW}_i \times d_i
 $$
 
-其中：
-- $\text{IPTW}_i = \frac{\mathbb{1}[\text{trt}_i = 1]}{P(\text{trt}_i = 1 | X_i)} + \frac{\mathbb{1}[\text{trt}_i = 0]}{P(\text{trt}_i = 0 | X_i)}$（stabilized）
-- $\text{source\_discount}_i = \begin{cases} 1 & \text{if } \text{source}_i = \text{Hainan\_Treated} \\ a_0 & \text{if } \text{source}_i \in \{\text{External\_A}, \text{External\_B}\} \text{ and } \text{trt}_i = 0 \end{cases}$
+其中，$\mathrm{IPTW}_i$ 为逆概率加权（inverse probability of treatment weight），$d_i$ 为数据来源折扣因子（source-specific discount factor）。
 
-#### 4.2.3 Prior Specification
-| 参数 | Prior分布 | 超参数 | 理由 |
-|---|---|---|---|
-| $\alpha$ | | | |
-| $\beta_{\text{trt}}$ | | | |
-| $\beta_k$ (other) | | | |
+对于二分类处理变量 $A_i = \mathrm{trt}_i$，未稳定化（unstabilized）的 IPTW 定义为：
 
-[从Rmd原型中提取当前使用的prior；如无明确设置则说明brms默认]
+$$
+\mathrm{IPTW}_i =
+\frac{\mathbb{I}(A_i = 1)}{\Pr(A_i = 1 \mid X_i)}
++
+\frac{\mathbb{I}(A_i = 0)}{\Pr(A_i = 0 \mid X_i)}
+$$
 
+若使用稳定化权重（stabilized weights），则定义为：
+
+$$
+\mathrm{IPTW}_i =
+\frac{\mathbb{I}(A_i = 1)\Pr(A_i = 1)}{\Pr(A_i = 1 \mid X_i)}
++
+\frac{\mathbb{I}(A_i = 0)\Pr(A_i = 0)}{\Pr(A_i = 0 \mid X_i)}
+$$
+
+数据来源折扣因子定义为：
+
+$$
+d_i =
+\begin{cases}
+1, & \text{若 } \mathrm{source}_i = \text{Hainan\_Treated}, \\
+a_0, & \text{若 } \mathrm{source}_i \in \{\text{External\_A}, \text{External\_B}\} \text{ 且 } A_i = 0.
+\end{cases}
+$$
+
+其中，$a_0 \in [0, 1]$ 用于控制外部对照数据的信息借用强度（information borrowing strength）。
 ### 4.3 Continuous Outcome Model
 [类似结构，替换为线性模型和高斯likelihood]
 
@@ -269,7 +290,6 @@ a0      <- 0.5
 - [ ] 确认所有协变量的编码规则
 - [ ] 确认prior分布的具体形式与超参数
 - [ ] 确认借用机制的数学表达式
-- [ ] 获得统计审核的签字
 - [ ] 确认与原型Rmd的一致性
 
 ---
