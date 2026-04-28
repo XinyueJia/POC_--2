@@ -170,7 +170,7 @@
 
 - **output_contract.md**：标准输出结构
   - ✅ 定义了raw output和summary output格式
-  - ⚠️ 待实现：metadata.json的正式生成与保存
+  - ✅ metadata.json 的正式生成与保存（已在 Rmd L1258-1273 实现）
 
 #### 🆕 附加产物
 本阶段还生成了以下支持文档：
@@ -217,16 +217,16 @@
 
 #### 优先级 ✅ 
 4. **规范化输出结构**
-  - 为每次运行生成唯一的 run_id
-  - 创建 metadata.json 生成逻辑
-  - 定义 warnings 收集机制
+  - ✅ 为每次运行生成唯一的 run_id（Rmd L1073-1076）
+  - ✅ 创建 metadata.json 生成逻辑（Rmd L1258-1273）
+  - ✅ 定义 warnings 收集机制（集成至诊断输出）
 
 以上补充项已同步到 `contracts/alignment_checklist.md`，当前可直接进入 Step 1 冻结规范维护。
 
 ---
 
 ### Step 1：明确统计模型
-将当前 Rmd 中真正属于统计模型定义的部分抽取出来，并冻结为可直接转写的规范版本，明确：
+基于已冻结的 Rmd 原型与 `docs/step1_model_spec_template.md`，明确统计模型规范如下：
 
 - 模型目标
 - 数据结构
@@ -242,13 +242,21 @@
 
 ---
 
-### Step 2：转写 Stan-level model
-在 Step 1 冻结后，将统计模型正式转写为可独立运行的 Stan model，包括：
+### Step 2：Stan 迁移（初始化就绪）
+在 Step 1 已冻结的前提下，将统计模型正式转写为 CmdStan workflow，包括：
 
-- data block
-- parameters block
-- model block
-- generated quantities block
+**核心交付物（P0 - 必须）：**
+- `step2_stan_migration/stan_model_binary.stan` - 二分类结局 Stan model
+- `step2_stan_migration/stan_model_continuous.stan` - 连续结局 Stan model  
+- `step2_stan_migration/stan_model_survival.stan` - 生存结局 Stan model（分段指数）
+- `step2_stan_migration/stan_data_preparation.R` - Rmd 输出→Stan data 转换
+- `step2_stan_migration/stan_execution.R` - CmdStan 执行器（config.json 集成）
+- `step2_stan_migration/stan_output_formatter.R` - Stan output→summary_output.json 转换
+- `step2_stan_migration/step2_migration_checklist.md` - Stan↔Rmd 输出验证清单
+
+**可选扩展（P1）：**
+- metadata.json 完整生成（复用 Rmd 逻辑）
+- Stan diagnostics 自动检查（同步 Rmd 阈值）
 
 ---
 
@@ -278,7 +286,7 @@
 
 ## 当前使用建议
 
-这个仓库当前正处于 **Step 0 完成 → Step 0.5 完成 → Step 1 冻结** 的阶段。建议的使用顺序：
+这个仓库当前正处于 **Step 0 完成 → Step 0.5 完成 → Step 1 冻结 → Step 2 初始化就绪** 的阶段。建议的使用顺序：
 
 ### 第一步：理解整体框架
 1. 阅读本 README 的"仓库目标"和"当前仓库内容"部分，了解项目的整体目标
@@ -308,12 +316,23 @@
 - ✅ `config/config.json`：生产级配置文件（诊断阈值完整）
 - ✅ `docs/step1_model_spec_template.md`：Step 1 冻结版统计模型规范已完成
 
-### 第三步：推进Step 1（在Step 0完成后）
-1. 基于 `docs/step1_model_spec_template.md` 的冻结版模板，正式维护统计模型规范
+### 第三步：推进Step 1（已冻结）
+1. 基于 `docs/step1_model_spec_template.md` 的冻结版模板，维护统计模型规范
 2. 从原型Rmd中提取并冻结：estimand、模型方程式、权重机制、prior 设置、诊断规则
 
-### 第四步：后续阶段（Step 2+）
-只有在Step 1正式冻结后，才推进Stan转写、工程化等后续工作。
+### 第四步：初始化Step 2（Stan 迁移）
+**Step 2 已就绪。** 后续工作包括：
+1. 创建 `step2_stan_migration/` 目录结构
+2. 基于 Step 1 冻结规范转写 3 个 Stan models（binary / continuous / survival）
+3. 实现数据格式转换层（Rmd preprocessing output → Stan data block）
+4. 实现执行层（CmdStan runner with config.json integration）
+5. 实现输出格式转换层（Stan output → summary_output.json + metadata.json）
+6. 创建 Step 2 验证清单，确保 Stan 输出与 Rmd 输出一致
+
+### 第五步：后续阶段（Step 3+）
+在 Step 2 Stan 迁移完成并验证后，再推进：
+- Step 3：标准执行流程解耦（preprocessing / model / config / execution / packaging）
+- Step 4：工程化封装与安全执行对接
 
 ---
 
@@ -333,7 +352,7 @@
 |---|---|
 | 快速理解当前分析 | 读本 README + 四份 contract + Rmd 原型 |
 | 评审当前方法的合理性 | 查看 `docs/step1_model_spec_template.md` 的冻结版框架，对应原型逐项检查 |
-| 准备 Stan 迁移 | 直接使用冻结后的 Step 1 规范，进入 Stan 转写 |
+| Stan 转写 | 直接使用冻结后的 Step 1 规范，进入 Stan 转写 |
 | 后续工程化对接 | 基于 `alignment_checklist.md` 的优先修复列表确保所有 contract 完整 |
 
 ---
