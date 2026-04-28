@@ -1,0 +1,20 @@
+{
+  "run_id": ["borrowing_v1_20260428_165439"],
+  "model_name": ["borrowing_v1"],
+  "outcome_type": ["multi-outcome"],
+  "input_file": ["demo_data_advanced.xlsx"],
+  "config_file": ["config.json"],
+  "analysis_date": ["2026-04-28 16:55:35"],
+  "chains": [4],
+  "iter": [2000],
+  "warmup": [1000],
+  "seed": [20260407],
+  "a0": [0.5],
+  "trim_lower": [0.01],
+  "trim_upper": [0.99],
+  "use_ps_weight": [true],
+  "status": ["success"],
+  "diagnostics_passed": [true],
+  "r_version": ["4.5.2"],
+  "brms_version": ["2.23.0"]
+}

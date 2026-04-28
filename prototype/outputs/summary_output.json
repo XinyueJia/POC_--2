@@ -1,0 +1,114 @@
+{
+  "run_id": ["borrowing_v1_20260428_165439"],
+  "metadata": {
+    "run_id": ["borrowing_v1_20260428_165439"],
+    "model_name": ["borrowing_v1"],
+    "outcome_type": ["multi-outcome"],
+    "input_file": ["demo_data_advanced.xlsx"],
+    "config_file": ["config.json"],
+    "analysis_date": ["2026-04-28 16:55:35"],
+    "chains": [4],
+    "iter": [2000],
+    "warmup": [1000],
+    "seed": [20260407],
+    "a0": [0.5],
+    "trim_lower": [0.01],
+    "trim_upper": [0.99],
+    "use_ps_weight": [true],
+    "status": ["success"],
+    "diagnostics_passed": [true],
+    "r_version": ["4.5.2"],
+    "brms_version": ["2.23.0"]
+  },
+  "results": {
+    "binary": {
+      "result": [
+        {
+          "outcome": "Binary",
+          "effect": "OR",
+          "post_mean": 0.3694,
+          "post_median": 0.3632,
+          "conf.low": 0.2383,
+          "conf.high": 0.5368,
+          "post_prob_benefit": 1
+        }
+      ],
+      "diagnostics": [
+        {
+          "outcome": "Binary",
+          "rhat_max": 1.0019,
+          "ess_bulk_min": 2482.7676,
+          "ess_tail_min": 2017.0264,
+          "n_divergent": 0
+        }
+      ]
+    },
+    "continuous": {
+      "result": [
+        {
+          "outcome": "Continuous",
+          "effect": "Mean difference",
+          "post_mean": -8.8279,
+          "post_median": -8.8288,
+          "conf.low": -10.397,
+          "conf.high": -7.2819,
+          "post_prob_benefit": 1
+        }
+      ],
+      "diagnostics": [
+        {
+          "outcome": "Continuous",
+          "rhat_max": 1.0026,
+          "ess_bulk_min": 3265.678,
+          "ess_tail_min": 2833.6206,
+          "n_divergent": 0
+        }
+      ]
+    },
+    "survival": {
+      "result": [
+        {
+          "outcome": "Survival",
+          "effect": "HR",
+          "post_mean": 0.4324,
+          "post_median": 0.429,
+          "conf.low": 0.3448,
+          "conf.high": 0.5365,
+          "post_prob_benefit": 1
+        }
+      ],
+      "diagnostics": [
+        {
+          "outcome": "Survival",
+          "rhat_max": 1.0015,
+          "ess_bulk_min": 4420.606,
+          "ess_tail_min": 2258.7386,
+          "n_divergent": 0
+        }
+      ]
+    }
+  },
+  "diagnostics_summary": [
+    {
+      "outcome": "Binary",
+      "rhat_max": 1.0019,
+      "ess_bulk_min": 2482.7676,
+      "ess_tail_min": 2017.0264,
+      "n_divergent": 0
+    },
+    {
+      "outcome": "Continuous",
+      "rhat_max": 1.0026,
+      "ess_bulk_min": 3265.678,
+      "ess_tail_min": 2833.6206,
+      "n_divergent": 0
+    },
+    {
+      "outcome": "Survival",
+      "rhat_max": 1.0015,
+      "ess_bulk_min": 4420.606,
+      "ess_tail_min": 2258.7386,
+      "n_divergent": 0
+    }
+  ]
+}

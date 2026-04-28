@@ -41,13 +41,20 @@ fmt_p_academic <- function(p) {
 read_analysis_data <- function(data_path = "demo_data_advanced.xlsx") {
   dat <- openxlsx::read.xlsx(data_path) %>%
     dplyr::mutate(
-      source = factor(source, levels = c("External_A", "External_B", "Hainan_Treated")),
-      sex = factor(sex),
-      ecog = factor(ecog),
-      stage = factor(stage),
-      biomarker = factor(biomarker),
-      prior_tx = factor(prior_tx),
-      trt = as.integer(trt)
+      # 对 sex 进行数值编码：Female=0, Male=1
+      sex = as.integer(ifelse(sex == "Female", 0, ifelse(sex == "Male", 1, NA))),
+      # ecog 已是数值 0/1/2，保持不变
+      ecog = as.integer(ecog),
+      # stage 保持字符类型 "III"/"IV"
+      stage = as.character(stage),
+      # 对 biomarker 进行数值编码：Negative=0, Positive=1
+      biomarker = as.integer(ifelse(biomarker == "Negative", 0, ifelse(biomarker == "Positive", 1, NA))),
+      # 对 prior_tx 进行数值编码：No=0, Yes=1
+      prior_tx = as.integer(ifelse(prior_tx == "No", 0, ifelse(prior_tx == "Yes", 1, NA))),
+      # trt 已是数值
+      trt = as.integer(trt),
+      # 对 source 进行因子化
+      source = factor(source, levels = c("External_A", "External_B", "Hainan_Treated"))
     )
 
   if ("status" %in% names(dat)) {
@@ -136,6 +143,18 @@ validate_encoding <- function(data) {
   invisible(data)
 }
 
+# 对数值编码变量进行因子化，便于 tableone 展示
+factorize_for_tableone <- function(data) {
+  data %>%
+    dplyr::mutate(
+      sex = factor(sex, levels = c(0, 1), labels = c("Female", "Male")),
+      ecog = factor(ecog, levels = c(0, 1, 2), labels = c("0", "1", "2")),
+      stage = factor(stage, levels = c("III", "IV")),
+      biomarker = factor(biomarker, levels = c(0, 1), labels = c("Negative", "Positive")),
+      prior_tx = factor(prior_tx, levels = c(0, 1), labels = c("No", "Yes"))
+    )
+}
+
 # 对 IPTW 做分位数截断，降低极端权重影响。
 trim_iptw_weights <- function(w, trim_lower = 0.01, trim_upper = 0.99) {
   trim_q <- as.numeric(stats::quantile(w, probs = c(trim_lower, trim_upper), na.rm = TRUE))
@@ -150,6 +169,7 @@ prepare_baseline_data <- function(data) {
 # 根据是否加权，统一生成 tableone 的三组基线表对象。
 make_tableone_three_groups <- function(data, weight_var = NULL) {
   data <- prepare_baseline_data(data)
+  data <- factorize_for_tableone(data)
 
   if (is.null(weight_var)) {
     tableone::CreateTableOne(
@@ -183,6 +203,7 @@ make_tableone_two_groups <- function(data, groups, weight_var = NULL) {
   data <- prepare_baseline_data(data)
   data <- subset(data, source %in% groups)
   data$source <- droplevels(data$source)
+  data <- factorize_for_tableone(data)
 
   if (is.null(weight_var)) {
     tableone::CreateTableOne(
@@ -480,24 +501,15 @@ format_bayes_result_table <- function(result_df) {
 
 #### biomarker 的实际应用
 
-在临床研究中，生物标志物常见包括：
-- 肿瘤相关：PD-L1表达、MSI/dMMR状态、特定基因突变（EGFR、KRAS等）
-- 炎症相关：CRP水平、细胞因子表达
-- 预后相关：特定蛋白标志物、转录组信号
+在临床研究中，生物标志物常见包括： - 肿瘤相关：PD-L1表达、MSI/dMMR状态、特定基因突变（EGFR、KRAS等） - 炎症相关：CRP水平、细胞因子表达 - 预后相关：特定蛋白标志物、转录组信号
 
 本演示采用**二分类编码**（0=Negative, 1=Positive）。实际应用中若为多分类或连续值，只需调整PS model和后续回归模型中的编码方式。
 
 #### cont_y 的实际应用
 
-在临床研究中，连续型结局常见包括：
-- 生化指标：肿瘤标志物浓度（ng/mL）、肝肾功能指标（U/L、mg/dL）
-- 影像测量：肿瘤直径（mm）、器官体积（cm³）
-- 功能评分：生活质量评分、症状严重程度评分
-- 生理指标：血压（mmHg）、血糖（mg/dL）
+在临床研究中，连续型结局常见包括： - 生化指标：肿瘤标志物浓度（ng/mL）、肝肾功能指标（U/L、mg/dL） - 影像测量：肿瘤直径（mm）、器官体积（cm³） - 功能评分：生活质量评分、症状严重程度评分 - 生理指标：血压（mmHg）、血糖（mg/dL）
 
-本演示采用**正态线性模型**。该方法最适合于近似正态分布的连续指标。若实际指标存在明显右偏（如肿瘤标志物浓度）或其他非正态特征，建议在上游数据处理中：
-- 应用 log 或 sqrt 转换后再进入模型
-- 或采用分位数回归、广义线性模型（如 gamma 分布）替代标准线性回归
+本演示采用**正态线性模型**。该方法最适合于近似正态分布的连续指标。若实际指标存在明显右偏（如肿瘤标志物浓度）或其他非正态特征，建议在上游数据处理中： - 应用 log 或 sqrt 转换后再进入模型 - 或采用分位数回归、广义线性模型（如 gamma 分布）替代标准线性回归
 
 分类变量包括：
 
@@ -712,9 +724,9 @@ knitr::kable(
 )
 ```
 
-未调整基线表显示，当前单臂试验治疗组 `Hainan_Treated` 与两个外部对照来源在多项基线特征上存在明显差异。连续变量方面，治疗组患者更年轻，白蛋白水平更高；例如治疗组平均年龄为 55.5 岁，而 `External_A` 和 `External_B` 分别为 60.1 岁和 58.3 岁，年龄的 SMD 分别为 0.635 和 0.354。白蛋白差异更为明显，治疗组均值为 41.9，而 `External_A` 和 `External_B` 分别为 39.2 和 38.1，对应 SMD 为 0.625 和 0.841。分类变量方面，ECOG、生物标志物状态和既往治疗史的不平衡也较突出，尤其是治疗组中 ECOG 0 比例更高、既往治疗比例更低，提示治疗组总体预后基础优于外部对照组。
+未调整基线表显示，当前单臂试验治疗组 `Hainan_Treated` 与两个外部对照来源在多项基线特征上存在明显差异。连续变量方面，治疗组患者更年轻且白蛋白水平更高；例如治疗组平均年龄为 54.5 岁，而 `External_A` 和 `External_B` 分别为 59.8 岁和 58.0 岁，年龄的 SMD 分别为 0.673 和 0.428。白蛋白差异更为明显，治疗组均值为 41.8，而 `External_A` 和 `External_B` 分别为 38.7 和 37.9，对应 SMD 分别为 0.705 和 0.840。分类变量方面，ECOG、分期、生物标志物状态和既往治疗史也都存在不同程度的不平衡，尤其是治疗组中 ECOG 0 比例更高、既往治疗比例更低，提示治疗组总体预后基础优于外部对照组。
 
-从整体模式看，`External_B` 与治疗组的可比性总体上比 `External_A` 更差，尤其体现在白蛋白、既往治疗史和 ECOG 等关键预后变量上；而 `External_A` 在年龄方面与治疗组差异更明显。`stage` 的组间差异相对较小，两个比较的 SMD 均约为 0.19，且总体检验 P 值为 0.068，提示分期分布尚相对接近。总体而言，该未调整基线表表明当前治疗组与多来源外部对照之间存在实质性基线不平衡，若直接进行未经调整的疗效比较，结果可能受到混杂偏倚影响，因此有必要在后续分析中采用 IPTW 或回归调整等方法改善组间可比性。
+从整体模式看，`External_A` 与治疗组在年龄方面差异更大，而 `External_B` 在白蛋白和既往治疗史方面与治疗组的差距更明显；分期和生物标志物状态在三组之间也存在中度不平衡，整体检验 P 值分别为 0.019 和 0.010。ECOG 的总体差异相对较弱，但仍达到边界显著水平（P=0.071）。总体而言，该未调整基线表表明当前治疗组与多来源外部对照之间存在实质性基线不平衡，若直接进行未经调整的疗效比较，结果可能受到混杂偏倚影响，因此有必要在后续分析中采用 IPTW 或回归调整等方法改善组间可比性。
 
 ## IPTW 加权后的三组基线表
 
@@ -913,7 +925,7 @@ knitr::kable(
 )
 ```
 
-传统多变量回归分析结果显示，在控制来源异质性指标及基线协变量后，当前单臂试验治疗组相对于外部对照总体表现出一致的获益趋势。对于生存结局，治疗组的风险比（HR）为 0.540，95% 置信区间为 0.430–0.680，P \< 0.001，提示治疗组的事件风险约较外部对照降低 46%。对于二分类结局，治疗组的优势比（OR）为 0.390，95% 置信区间为 0.250–0.610，P \< 0.001，说明在调整协变量后，治疗组发生该二分类事件的优势明显低于外部对照。对于连续结局，治疗效应估计值为 -5.430，95% 置信区间为 -6.690 至 -4.160，P \< 0.001，表明治疗组在该连续指标上的平均水平显著低于外部对照。
+传统多变量回归分析结果显示，在控制来源异质性指标及基线协变量后，当前单臂试验治疗组相对于外部对照总体表现出一致的获益趋势。对于生存结局，治疗组的风险比（HR）为 0.4233，95% 置信区间为 0.3355–0.5340，P \< 0.001，提示治疗组的事件风险约较外部对照降低 58%。对于二分类结局，治疗组的优势比（OR）为 0.3569，95% 置信区间为 0.2294–0.5498，P \< 0.001，说明在调整协变量后，治疗组发生该二分类事件的优势明显低于外部对照。对于连续结局，治疗效应估计值为 -6.8083，95% 置信区间为 -7.9855 至 -5.6311，P \< 0.001，表明治疗组在该连续指标上的平均水平显著低于外部对照。
 
 总体来看，三类结局的结果方向一致，且置信区间均未跨越无效值，提示在传统多变量回归调整框架下，治疗组相对于外部对照显示出统计学显著的疗效差异。这说明即使在存在基线不平衡和来源差异的情况下，通过在结局模型中纳入治疗变量、来源异质性指标及基线协变量，可以观察到较稳定的治疗效应信号。不过，这一结果仍建立在结局模型设定正确的前提之上，因此后续还需要结合 IPTW 和贝叶斯借用分析，进一步考察结论在不同调整策略下的稳健性。
 
@@ -1015,7 +1027,7 @@ knitr::kable(
 )
 ```
 
-IPTW 加权后结合回归分析结果显示，在通过倾向性评分加权改善基线可比性后，当前单臂试验治疗组相对于外部对照总体仍表现出一致且显著的获益趋势。对于生存结局，治疗组的风险比（HR）为 0.570，95% 置信区间为 0.440–0.740，P \< 0.001，提示治疗组事件风险较外部对照降低约 43%。对于二分类结局，治疗组的优势比（OR）为 0.420，95% 置信区间为 0.280–0.620，P \< 0.001，说明治疗组发生该二分类事件的优势明显低于外部对照。对于连续结局，治疗效应估计值为 -5.970，95% 置信区间为 -7.720 至 -4.230，P \< 0.001，表明治疗组在该连续指标上的平均水平显著低于外部对照。三类结局的效应方向一致，且区间估计均未跨越无效值，说明在 IPTW 加权后的分析框架下，治疗组的疗效优势仍然稳定存在
+IPTW 加权后结合回归分析结果显示，在通过倾向性评分加权改善基线可比性后，当前单臂试验治疗组相对于外部对照总体仍表现出一致且显著的获益趋势。对于生存结局，治疗组的风险比（HR）为 0.4485，95% 置信区间为 0.3489–0.5765，P \< 0.001，提示治疗组事件风险较外部对照降低约 55%。对于二分类结局，治疗组的优势比（OR）为 0.4092，95% 置信区间为 0.2728–0.6082，P \< 0.001，说明治疗组发生该二分类事件的优势明显低于外部对照。对于连续结局，治疗效应估计值为 -7.5231，95% 置信区间为 -9.0724 至 -5.9738，P \< 0.001，表明治疗组在该连续指标上的平均水平显著低于外部对照。三类结局的效应方向一致，且区间估计均未跨越无效值，说明在 IPTW 加权后的分析框架下，治疗组的疗效优势仍然稳定存在
 
 # 方法三：IPTW + power prior
 
@@ -1352,16 +1364,34 @@ surv_result <- posterior_summary(
 # =========================================================
 # 从brms拟合对象中提取关键诊断指标
 extract_diagnostics <- function(fit_obj, outcome_name) {
-  summ <- brms::summary(fit_obj)
+  summ <- summary(fit_obj)
   
   # 提取Rhat、ESS等诊断指标
   rhat_values <- summ$fixed[, "Rhat"]
   ess_bulk_values <- summ$fixed[, "Bulk_ESS"]
   ess_tail_values <- summ$fixed[, "Tail_ESS"]
   
-  # 从draws中计算divergent transitions
-  draws <- posterior::as_draws(fit_obj)
-  n_divergent <- sum(posterior::nuts_divergence(draws) == 1, na.rm = TRUE)
+  # 从stan对象中获取divergent transitions数量
+  n_divergent <- 0
+  tryCatch({
+    # 尝试从 nuts_params 获取
+    np <- nuts_params(fit_obj)
+    if (!is.null(np)) {
+      n_divergent <- sum(np$divergent == 1, na.rm = TRUE)
+    }
+  }, error = function(e) {
+    # 如果失败，尝试从 fit@sim$divergences 获取
+    tryCatch({
+      if (methods::hasSlot(fit_obj$fit, "sim")) {
+        div <- fit_obj$fit@sim$divergences
+        if (!is.null(div)) {
+          n_divergent <<- sum(div, na.rm = TRUE)
+        }
+      }
+    }, error = function(e2) {
+      n_divergent <<- NA
+    })
+  })
   
   data.frame(
     outcome = outcome_name,
@@ -1497,7 +1527,7 @@ knitr::kable(
   align = "llcccc")
 ```
 
-在 IPTW 基础上进一步结合 fixed power prior 进行贝叶斯信息借用后，三类结局的分析结果均一致支持当前单臂试验治疗组相对于外部对照具有获益。对于二分类结局，治疗效应的后验 OR 均值为 0.404，中位数为 0.397，95% 后验可信区间为 0.266–0.585，且后验获益概率为 1.000，提示在后验分布下，治疗组发生该事件的风险低于外部对照具有极高的后验支持度。对于连续结局，治疗效应的后验均值差为 -6.702，中位数为 -6.724，95% 后验可信区间为 -8.439 至 -4.919；在预先定义“结局值降低代表获益”的前提下，上述结果表明治疗组在该连续指标上优于外部对照。对于生存结局，后验 HR 均值为 0.527，中位数为 0.524，95% 后验可信区间为 0.422–0.651，后验获益概率为 1.000，说明在引入外部信息折扣借用后，治疗组事件风险低于外部对照的证据仍然充分。
+在本次实际运行结果中，IPTW 基础上进一步结合 fixed power prior 进行贝叶斯信息借用后，三类结局仍一致支持当前单臂试验治疗组优于外部对照。对于二分类结局，治疗效应的后验 OR 均值为 0.3694，中位数为 0.3632，95% 后验可信区间为 0.2383–0.5368，后验获益概率为 1.000，说明治疗组发生该事件的后验支持度很高。对于连续结局，治疗效应的后验均值差为 -8.8279，中位数为 -8.8288，95% 后验可信区间为 -10.3970 至 -7.2819；在“结局值降低代表获益”的前提下，结果表明治疗组在该连续指标上明显优于外部对照。对于生存结局，后验 HR 均值为 0.4324，中位数为 0.4290，95% 后验可信区间为 0.3448–0.5365，后验获益概率为 1.000，提示在引入外部信息折扣借用后，治疗组事件风险低于外部对照的证据十分充分。三类模型的诊断结果也均通过，Rhat 最大值不超过 1.0026，最小 ESS_bulk 不低于 2482.7676，且未出现 divergent transitions。
 
 # 三类结局结果汇总与比较
 
@@ -1514,7 +1544,7 @@ knitr::kable(
 )
 ```
 
-三个方法的结果整体上高度一致，均表明当前单臂试验治疗组相对于外部对照具有稳定的获益趋势。传统多变量回归分析中，生存结局 HR 为 0.540，二分类结局 OR 为 0.390，连续结局均值差为 -5.430；IPTW 加权后结合回归分析中，HR 为 0.570，OR 为 0.420，均值差为 -5.970；在 IPTW 基础上进一步结合 fixed power prior 的贝叶斯信息借用分析中，后验均值对应的 HR 为 0.527，OR 为 0.404，均值差为 -6.702。三类方法下，生存结局的效应估计均明显小于 1，二分类结局的 OR 均小于 1，连续结局的均值差均为负值，说明三种分析框架对治疗效应方向的判断完全一致，且均支持治疗组优于外部对照。
+三个方法的结果整体上高度一致，均表明当前单臂试验治疗组相对于外部对照具有稳定的获益趋势。传统多变量回归分析中，生存结局 HR 为 0.4233，二分类结局 OR 为 0.3569，连续结局均值差为 -6.8083；IPTW 加权后结合回归分析中，HR 为 0.4485，OR 为 0.4092，均值差为 -7.5231；在 IPTW 基础上进一步结合 fixed power prior 的贝叶斯信息借用分析中，后验均值对应的 HR 为 0.4324，OR 为 0.3694，均值差为 -8.8279。三类方法下，生存结局的效应估计均明显小于 1，二分类结局的 OR 均小于 1，连续结局的均值差均为负值，说明三种分析框架对治疗效应方向的判断完全一致，且均支持治疗组优于外部对照。就贝叶斯借用模型而言，当前实际拟合结果给出的效应幅度在三类方法中最大，但方向和结论保持一致。
 
 贝叶斯信息借用分析的结果与前两种方法保持一致，且效应量级总体相近，说明在对外部对照信息进行折扣借用后，研究结论并未发生实质性改变。这种跨方法的一致性增强了结果的稳健性。相比前两种方法，贝叶斯借用方法的优势在于，它不仅能够在 IPTW 已经改善基线可比性的基础上，进一步通过 power prior 对外部对照证据强度进行显式控制，从而避免将外部信息视为与当前研究完全等价的证据，还能够直接给出后验可信区间和后验获益概率，使疗效证据的表达从“是否显著”进一步拓展到“治疗获益有多大概率成立”。因此，在多来源外部对照场景下，贝叶斯借用方法不仅保留了较好的稳健性，也在证据整合、结果解释和决策支持层面体现出更强的优势。
 
@@ -1534,7 +1564,7 @@ knitr::kable(
 -   power prior 参数 $a_0$ 是否需要做敏感性分析；
 -   对于多来源外部对照，是否需要更正式地建立层级模型或 commensurate prior 框架。
 
----
+------------------------------------------------------------------------
 
 # 输出与持久化
 
