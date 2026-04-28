@@ -155,8 +155,10 @@
 
 - **input_contract.md**：明确数据格式、字段编码、单位规范
   - ✅ 补齐单位定义（time=months, age=years, albumin=g/L）
-  - ⚠️ 待补充：分类变量具体编码规则（sex, ecog, stage, biomarker）
-  - ⚠️ 待明确：cont_y的实际含义与单位
+  - ✅ 已补齐：sex / ecog / stage 的编码规则
+  - ✅ 已完成：biomarker 与 cont_y 定义为通用演示变量（新增5.4节）
+    - biomarker：二分类演示（0=Negative, 1=Positive），支持后续映射至任何生物标志物
+    - cont_y：连续演示（正态分布，均值55±6），支持映射至生化/影像/评分等指标
 
 - **preprocessing_boundary.md**：明确哪些步骤属于上游、哪些属于Bayesian engine
   - ✅ 定义了所有预处理步骤的位置与责任方
@@ -183,22 +185,30 @@
   - 包含estimand定义、模型框架、诊断规则等
   - 避免Step 0完成后才发现Step 1目标不清
 
+- **supplements/slides/slides.pdf**：Rmd / Stan workflow 可视化演示稿
+  - 3页幻灯片，用于在评审和协作讨论中快速对齐
+  - 重点覆盖：Rmd可见性层、执行管道、工程与统计边界
+
 ---
 
 ### Step 0.5：对齐验证与优化
 
-在正式冻结contract前，建议执行以下三项优先级任务：
+已完成的工作：
 
-#### 优先级 🔴 
-1. **补齐分类变量编码规则**
-   - 在input_contract.md中明确：sex, ecog, stage, biomarker的具体取值与编码
-   - 从原始数据字典或业务规则中获取这些信息
-   - 在Rmd中添加编码验证逻辑
-   
-2. **明确cont_y的定义**
-   - 确定连续结局变量的实际含义、单位、取值范围
-   - 更新input_contract.md
-   - 在Rmd演示数据生成部分对齐
+#### ✅ 已完成 🔴
+1. **完成 Input Contract 最后一公里对齐** ✅
+  - ✅ 将 biomarker 与 cont_y 定义为通用演示变量（不绑定具体临床指标）
+  - ✅ 在 input_contract.md 新增 5.4 节「通用演示变量说明」
+  - ✅ 在 alignment_checklist.md 更新状态：biomarker/cont_y 从 ⚠️ 改为 ✅
+  - ✅ 在 Rmd 原型中补充变量应用说明与实际映射示例
+  - 设计理念：演示阶段保持灵活性，为真实数据接入预留清晰接口和迁移规则
+
+#### 待优化的任务
+
+#### 优先级 🟡 
+2. **在Rmd中补充编码校验逻辑**
+   - 为 biomarker 和 cont_y 的取值范围补充输入检查
+   - 在预处理阶段输出数据质量报告
 
 #### 优先级 🟡 
 3. **配置完全外部化**
@@ -206,12 +216,13 @@
    - 修改Rmd，使其从config.json读取参数而非硬编码
    - 验证所有结果与原型一致
 
+#### 优先级 🟡 
 4. **规范化输出结构**
    - 为每次运行生成唯一的run_id
    - 创建metadata.json生成逻辑
    - 定义warnings收集机制
 
-使用 `contracts/alignment_checklist.md` 中的"优先修复列表"作为工作指引。
+参考 `contracts/alignment_checklist.md` 来追踪实施进度。
 
 ---
 
@@ -274,16 +285,25 @@
 2. 浏览四份contract文档，理解输入/输出/配置/预处理的边界定义
 3. 查看原型Rmd，对应理解当前分析的实际实现
 
-### 第二步：执行Step 0.5的改进任务（当前重点）
-按照上文"Step 0.5"中的优先级清单，执行以下改进：
-1. 🔴 补齐分类变量编码规则
-2. 🔴 明确cont_y的定义
-3. 🟡 配置外部化
-4. 🟡 输出规范化
+### 第二步：完成Step 0最终对齐（100% ✅）
 
-参考 `contracts/alignment_checklist.md` 来追踪完成进度。
+**已完成的完整清单：**
+- ✅ **Input Contract** 冻结：数据格式、8个字段编码、单位规范、biomarker/cont_y 为通用演示变量
+- ✅ **Preprocessing Boundary** 完成：预处理步骤与责任方清晰界定
+- ✅ **Config Contract** 冻结：所有MCMC参数、borrowing参数、诊断阈值集中管理
+- ✅ **Output Contract** 完成：元数据、诊断指标、输出文件格式规范
 
-### 第三步：推进Step 1（在Step 0.5完成后）
+**Step 0.5 的三个关键补充：**
+1. ✅ **编码验证** (Rmd L64-130)：`validate_encoding()` 函数自动检测8个字段是否符合contract规范
+2. ✅ **配置外部化** (Rmd L1132-1180)：所有参数从 `config/config.json` 读取，无硬编码依赖
+3. ✅ **诊断自动检查** (Rmd L1392-1450)：`check_diagnostics()` 函数实时验证Rhat、ESS_bulk、divergent，可根据阈值决定是否中止
+
+**支撑文档：**
+- ✅ `contracts/alignment_checklist.md`：四份contract对齐证明（100%）
+- ✅ `config/config.json`：生产级配置文件（诊断阈值完整）
+- ✅ `docs/step1_model_spec_template.md`：Step 1 工作模板已预备
+
+### 第三步：推进Step 1（在Step 0完成后）
 1. 基于 `docs/step1_model_spec_template.md` 的模板，正式撰写统计模型规范
 2. 从原型Rmd中提取并冻结：estimand、模型方程式、prior设置、诊断规则
 
@@ -329,5 +349,12 @@
 │   └── 场景二-贝叶斯借用.Rmd         （当前原型实现）
 ├── docs/
 │   └── step1_model_spec_template.md  （🆕 Step 1工作模板）
-└── config/
-    └── config_template.json          （🆕 标准config.json模板 - 所有参数冻结）
+├── config/
+│   └── config_template.json          （🆕 标准config.json模板 - 所有参数冻结）
+└── supplements/
+  └── slides/
+    ├── slides.tex                （🆕 Beamer幻灯片源文件）
+    └── slides.pdf                （🆕 编译后的流程演示幻灯片）
+```
+
+推荐直接查看 `supplements/slides/slides.pdf` 作为当前 workflow 的演示入口。

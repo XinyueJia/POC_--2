@@ -61,6 +61,81 @@ read_analysis_data <- function(data_path = "demo_data_advanced.xlsx") {
   dat
 }
 
+# =========================================================
+# 编码规则验证（Encoding Validation）
+# =========================================================
+# 验证分类变量的编码是否符合 input_contract 规范
+validate_encoding <- function(data) {
+  checks <- list()
+  
+  # 验证 sex: 必须为 0 或 1
+  sex_valid <- all(data$sex %in% c(0, 1), na.rm = TRUE)
+  checks$sex <- list(
+    valid = sex_valid,
+    message = ifelse(sex_valid, "✓ sex 编码正确 (0=Female, 1=Male)", "✗ sex 包含非0/1值")
+  )
+  
+  # 验证 ecog: 必须为 0, 1 或 2
+  ecog_valid <- all(data$ecog %in% c(0, 1, 2), na.rm = TRUE)
+  checks$ecog <- list(
+    valid = ecog_valid,
+    message = ifelse(ecog_valid, "✓ ecog 编码正确 (0/1/2)", "✗ ecog 包含0/1/2以外的值")
+  )
+  
+  # 验证 stage: 必须为 "III" 或 "IV"
+  stage_valid <- all(data$stage %in% c("III", "IV"), na.rm = TRUE)
+  checks$stage <- list(
+    valid = stage_valid,
+    message = ifelse(stage_valid, "✓ stage 编码正确 (III/IV)", "✗ stage 包含III/IV以外的值")
+  )
+  
+  # 验证 biomarker: 必须为 0 或 1
+  biomarker_valid <- all(data$biomarker %in% c(0, 1), na.rm = TRUE)
+  checks$biomarker <- list(
+    valid = biomarker_valid,
+    message = ifelse(biomarker_valid, "✓ biomarker 编码正确 (0=Negative, 1=Positive)", "✗ biomarker 包含非0/1值")
+  )
+  
+  # 验证 prior_tx: 必须为 0 或 1
+  prior_tx_valid <- all(data$prior_tx %in% c(0, 1), na.rm = TRUE)
+  checks$prior_tx <- list(
+    valid = prior_tx_valid,
+    message = ifelse(prior_tx_valid, "✓ prior_tx 编码正确 (0=No, 1=Yes)", "✗ prior_tx 包含非0/1值")
+  )
+  
+  # 验证 trt: 必须为 0 或 1
+  trt_valid <- all(data$trt %in% c(0, 1), na.rm = TRUE)
+  checks$trt <- list(
+    valid = trt_valid,
+    message = ifelse(trt_valid, "✓ trt 编码正确 (0=Control, 1=Treated)", "✗ trt 包含非0/1值")
+  )
+  
+  # 验证 source: 必须为指定的三个来源
+  source_valid <- all(data$source %in% c("Hainan_Treated", "External_A", "External_B"), na.rm = TRUE)
+  checks$source <- list(
+    valid = source_valid,
+    message = ifelse(source_valid, "✓ source 编码正确 (Hainan_Treated/External_A/External_B)", "✗ source 包含非指定来源")
+  )
+  
+  # 汇总结果
+  all_valid <- all(sapply(checks, function(x) x$valid))
+  
+  cat("\n")
+  cat(strrep("=", 60), "\n")
+  cat("编码规则验证结果（Encoding Validation Results）\n")
+  cat(strrep("=", 60), "\n")
+  for (var_name in names(checks)) {
+    cat(checks[[var_name]]$message, "\n")
+  }
+  cat(strrep("=", 60), "\n")
+  
+  if (!all_valid) {
+    stop("\n编码规则验证失败。请检查上述标记为✗的变量。")
+  }
+  
+  invisible(data)
+}
+
 # 对 IPTW 做分位数截断，降低极端权重影响。
 trim_iptw_weights <- function(w, trim_lower = 0.01, trim_upper = 0.99) {
   trim_q <- as.numeric(stats::quantile(w, probs = c(trim_lower, trim_upper), na.rm = TRUE))
@@ -399,6 +474,31 @@ format_bayes_result_table <- function(result_df) {
 -   age：年龄；
 -   albumin：白蛋白水平。
 
+### 通用演示变量说明
+
+本示例中的 `biomarker` 和 `cont_y` 是**通用演示变量**，用于展示"分类与连续结局在多来源外部对照分析中的建模方法"。
+
+#### biomarker 的实际应用
+
+在临床研究中，生物标志物常见包括：
+- 肿瘤相关：PD-L1表达、MSI/dMMR状态、特定基因突变（EGFR、KRAS等）
+- 炎症相关：CRP水平、细胞因子表达
+- 预后相关：特定蛋白标志物、转录组信号
+
+本演示采用**二分类编码**（0=Negative, 1=Positive）。实际应用中若为多分类或连续值，只需调整PS model和后续回归模型中的编码方式。
+
+#### cont_y 的实际应用
+
+在临床研究中，连续型结局常见包括：
+- 生化指标：肿瘤标志物浓度（ng/mL）、肝肾功能指标（U/L、mg/dL）
+- 影像测量：肿瘤直径（mm）、器官体积（cm³）
+- 功能评分：生活质量评分、症状严重程度评分
+- 生理指标：血压（mmHg）、血糖（mg/dL）
+
+本演示采用**正态线性模型**。该方法最适合于近似正态分布的连续指标。若实际指标存在明显右偏（如肿瘤标志物浓度）或其他非正态特征，建议在上游数据处理中：
+- 应用 log 或 sqrt 转换后再进入模型
+- 或采用分位数回归、广义线性模型（如 gamma 分布）替代标准线性回归
+
 分类变量包括：
 
 -   sex：性别；
@@ -429,7 +529,7 @@ format_bayes_result_table <- function(result_df) {
 ################################
 #  构造协变量和分组变量
 ################################
-set.seed(20260403)
+set.seed(20260407)
 
 n_treat <- 200
 n_extA  <- 260
@@ -1029,26 +1129,86 @@ $$
 
 ```{r bayes-core-code, echo=TRUE, message=FALSE, warning=FALSE, paged.print=FALSE}
 # =========================================================
-# 0. User parameters
+# 0. Configuration Management
 # =========================================================
-data_path   <- "demo_data_advanced.xlsx"
-a0          <- 0.5
-trim_lower  <- 0.01
-trim_upper  <- 0.99
-cut_points  <- c(6, 12, 18, 24, 30)
-use_ps_weight <- TRUE
+# 从 config.json 读取所有运行参数（支持配置外部化）
 
-chains  <- 4
-iter    <- 2000
-warmup  <- 1000
+config_file <- "config/config.json"
+
+if (file.exists(config_file)) {
+  cat("✓ 从配置文件读取参数: ", config_file, "\n")
+  config <- jsonlite::read_json(config_file)
+  
+  # 提取模型参数
+  model_name  <- config$model$model_name
+  a0          <- config$borrowing$a0
+  trim_lower  <- config$weighting$trim_lower
+  trim_upper  <- config$weighting$trim_upper
+  cut_points  <- as.numeric(config$survival$cut_points)
+  use_ps_weight <- config$weighting$use_ps_weight
+  
+  # 提取MCMC参数
+  chains  <- config$mcmc$chains
+  iter    <- config$mcmc$iter
+  warmup  <- config$mcmc$warmup
+  seed    <- config$mcmc$seed
+  
+  # 提取诊断阈值
+  rhat_threshold <- config$diagnostics$rhat_threshold
+  ess_bulk_min <- config$diagnostics$ess_bulk_min
+  divergent_allowed <- config$diagnostics$divergent_allowed
+  stop_on_failure <- config$diagnostics$stop_on_failure
+  
+  # 提取输出设置
+  output_dir <- config$output$output_dir
+  
+  cat("配置参数已成功加载：\n")
+  cat("  - 模型: ", model_name, "\n")
+  cat("  - borrowing参数 (a0): ", a0, "\n")
+  cat("  - MCMC链数: ", chains, " | 总迭代: ", iter, "\n")
+  cat("  - Rhat阈值: ", rhat_threshold, "\n")
+  cat("\n")
+  
+} else {
+  cat("⚠ 配置文件未找到，使用默认参数\n")
+  # 默认参数（后备方案）
+  model_name  <- "borrowing_v1"
+  a0          <- 0.5
+  trim_lower  <- 0.01
+  trim_upper  <- 0.99
+  cut_points  <- c(6, 12, 18, 24, 30)
+  use_ps_weight <- TRUE
+  
+  chains  <- 4
+  iter    <- 2000
+  warmup  <- 1000
+  seed    <- 20260407
+  
+  rhat_threshold <- 1.05
+  ess_bulk_min <- 400
+  divergent_allowed <- 0
+  stop_on_failure <- TRUE
+  
+  output_dir <- "outputs"
+}
+
+data_path   <- "demo_data_advanced.xlsx"
 cores   <- min(4, parallel::detectCores())
-seed    <- 20260407
+
+# 生成本次运行的唯一标识
+run_id  <- paste0(
+  model_name, "_",
+  format(Sys.time(), "%Y%m%d_%H%M%S")
+)
 
 # =========================================================
 # 1. Read and prepare data
 # =========================================================
 # 读取数据，先构造 IPTW，再叠加 power prior 折扣权重。
 dat <- read_analysis_data(data_path)
+
+# 执行编码规则验证
+dat <- validate_encoding(dat)
 
 if (use_ps_weight) {
   w_out <- WeightIt::weightit(
@@ -1186,6 +1346,138 @@ surv_result <- posterior_summary(
   transform = exp,
   benefit_rule = function(x) x < 1
 )
+
+# =========================================================
+# 6. 诊断指标提取与元数据生成
+# =========================================================
+# 从brms拟合对象中提取关键诊断指标
+extract_diagnostics <- function(fit_obj, outcome_name) {
+  summ <- brms::summary(fit_obj)
+  
+  # 提取Rhat、ESS等诊断指标
+  rhat_values <- summ$fixed[, "Rhat"]
+  ess_bulk_values <- summ$fixed[, "Bulk_ESS"]
+  ess_tail_values <- summ$fixed[, "Tail_ESS"]
+  
+  # 从draws中计算divergent transitions
+  draws <- posterior::as_draws(fit_obj)
+  n_divergent <- sum(posterior::nuts_divergence(draws) == 1, na.rm = TRUE)
+  
+  data.frame(
+    outcome = outcome_name,
+    rhat_max = max(rhat_values, na.rm = TRUE),
+    ess_bulk_min = min(ess_bulk_values, na.rm = TRUE),
+    ess_tail_min = min(ess_tail_values, na.rm = TRUE),
+    n_divergent = n_divergent,
+    stringsAsFactors = FALSE
+  )
+}
+
+# 提取三个模型的诊断信息
+diag_binary <- extract_diagnostics(fit_binary, "Binary")
+diag_cont <- extract_diagnostics(fit_cont, "Continuous")
+diag_surv <- extract_diagnostics(fit_surv, "Survival")
+
+# 合并诊断信息
+diagnostics_summary <- dplyr::bind_rows(diag_binary, diag_cont, diag_surv)
+
+# =========================================================
+# 7. 诊断失败自动检测与处理
+# =========================================================
+check_diagnostics <- function(diag_df, rhat_threshold, ess_bulk_min, divergent_allowed, stop_on_failure) {
+  failures <- list()
+  
+  cat("\n")
+  cat(strrep("=", 70), "\n")
+  cat("MCMC 诊断检查（MCMC Diagnostics Check）\n")
+  cat(strrep("=", 70), "\n")
+  
+  # 检查 Rhat
+  rhat_failures <- diag_df$rhat_max > rhat_threshold
+  if (any(rhat_failures)) {
+    failures$rhat <- diag_df[rhat_failures, c("outcome", "rhat_max")]
+    cat("⚠ Rhat 警告：以下结局的 Rhat 超过阈值 (", rhat_threshold, ")\n")
+    print(failures$rhat)
+  } else {
+    cat("✓ Rhat 检查通过（所有 ≤ ", rhat_threshold, "）\n")
+  }
+  
+  # 检查 ESS_bulk
+  ess_failures <- diag_df$ess_bulk_min < ess_bulk_min
+  if (any(ess_failures)) {
+    failures$ess_bulk <- diag_df[ess_failures, c("outcome", "ess_bulk_min")]
+    cat("⚠ ESS_bulk 警告：以下结局的最小 ESS_bulk 低于阈值 (", ess_bulk_min, ")\n")
+    print(failures$ess_bulk)
+  } else {
+    cat("✓ ESS_bulk 检查通过（所有 ≥ ", ess_bulk_min, "）\n")
+  }
+  
+  # 检查 divergent transitions
+  div_failures <- diag_df$n_divergent > divergent_allowed
+  if (any(div_failures)) {
+    failures$divergent <- diag_df[div_failures, c("outcome", "n_divergent")]
+    cat("⚠ Divergent 警告：以下结局存在 divergent transitions\n")
+    print(failures$divergent)
+  } else {
+    cat("✓ Divergent 检查通过（均为 0）\n")
+  }
+  
+  # 综合判断
+  has_failures <- length(failures) > 0
+  cat(strrep("=", 70), "\n")
+  
+  if (has_failures) {
+    cat("⚠ 诊断检查发现问题。建议采取的措施：\n")
+    cat("  1. 增加迭代次数 (iter) 或链数 (chains)\n")
+    cat("  2. 调整 adapt_delta 或 max_treedepth\n")
+    cat("  3. 检查模型设定和数据质量\n")
+    
+    if (stop_on_failure) {
+      cat("\n✗ stop_on_failure = TRUE，分析中止。\n")
+      cat(strrep("=", 70), "\n")
+      stop("MCMC 诊断失败。请查看上述警告并调整参数。")
+    } else {
+      cat("\n⚠ stop_on_failure = FALSE，继续分析但结果需谨慎解释。\n")
+      cat(strrep("=", 70), "\n")
+    }
+  } else {
+    cat("✓ 所有诊断检查均通过！可安全进行结果推断。\n")
+    cat(strrep("=", 70), "\n")
+  }
+  
+  invisible(failures)
+}
+
+# 执行诊断检查
+diag_failures <- check_diagnostics(
+  diagnostics_summary, 
+  rhat_threshold, 
+  ess_bulk_min, 
+  divergent_allowed, 
+  stop_on_failure
+)
+
+# 创建metadata
+metadata <- list(
+  run_id = run_id,
+  model_name = model_name,
+  outcome_type = "multi-outcome",
+  input_file = data_path,
+  config_file = "config.json",
+  analysis_date = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
+  chains = chains,
+  iter = iter,
+  warmup = warmup,
+  seed = seed,
+  a0 = a0,
+  trim_lower = trim_lower,
+  trim_upper = trim_upper,
+  use_ps_weight = use_ps_weight,
+  status = ifelse(length(diag_failures) == 0, "success", "warning"),
+  diagnostics_passed = length(diag_failures) == 0,
+  r_version = paste(R.version$major, R.version$minor, sep = "."),
+  brms_version = as.character(packageVersion("brms"))
+)
 ```
 
 ## 结果
@@ -1241,3 +1533,93 @@ knitr::kable(
 -   外部来源之间是否还需要更细致的分层或分层借用；
 -   power prior 参数 $a_0$ 是否需要做敏感性分析；
 -   对于多来源外部对照，是否需要更正式地建立层级模型或 commensurate prior 框架。
+
+---
+
+# 输出与持久化
+
+```{r output-generation, echo=TRUE, message=FALSE, warning=FALSE, paged.print=FALSE}
+# =========================================================
+# 7. 保存完整的输出文件
+# =========================================================
+
+# 创建输出目录（如果不存在）
+output_dir <- "outputs"
+if (!dir.exists(output_dir)) {
+  dir.create(output_dir, showWarnings = FALSE)
+}
+
+# 保存metadata.json
+if (requireNamespace("jsonlite", quietly = TRUE)) {
+  jsonlite::write_json(
+    metadata,
+    path = file.path(output_dir, "metadata.json"),
+    pretty = TRUE
+  )
+}
+
+# 保存后验draws (raw output)
+posterior_draws_binary <- as.data.frame(posterior::as_draws_df(fit_binary))
+posterior_draws_cont <- as.data.frame(posterior::as_draws_df(fit_cont))
+posterior_draws_surv <- as.data.frame(posterior::as_draws_df(fit_surv))
+
+utils::write.csv(
+  posterior_draws_binary,
+  file = file.path(output_dir, "samples_binary.csv"),
+  row.names = FALSE
+)
+utils::write.csv(
+  posterior_draws_cont,
+  file = file.path(output_dir, "samples_continuous.csv"),
+  row.names = FALSE
+)
+utils::write.csv(
+  posterior_draws_surv,
+  file = file.path(output_dir, "samples_survival.csv"),
+  row.names = FALSE
+)
+
+# 保存诊断信息
+utils::write.csv(
+  diagnostics_summary,
+  file = file.path(output_dir, "sampler_diagnostics.csv"),
+  row.names = FALSE
+)
+
+# 保存增强型summary结果（包含诊断）
+summary_output <- list(
+  run_id = run_id,
+  metadata = metadata,
+  results = list(
+    binary = list(
+      result = binary_result,
+      diagnostics = diag_binary
+    ),
+    continuous = list(
+      result = cont_result,
+      diagnostics = diag_cont
+    ),
+    survival = list(
+      result = surv_result,
+      diagnostics = diag_surv
+    )
+  ),
+  diagnostics_summary = diagnostics_summary
+)
+
+if (requireNamespace("jsonlite", quietly = TRUE)) {
+  jsonlite::write_json(
+    summary_output,
+    path = file.path(output_dir, "summary_output.json"),
+    pretty = TRUE
+  )
+}
+
+cat("\n✓ 输出文件已保存到:", output_dir, "\n")
+cat("  - metadata.json\n")
+cat("  - summary_output.json\n")
+cat("  - samples_binary.csv\n")
+cat("  - samples_continuous.csv\n")
+cat("  - samples_survival.csv\n")
+cat("  - sampler_diagnostics.csv\n")
+```

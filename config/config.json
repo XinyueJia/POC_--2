@@ -1,0 +1,40 @@
+{
+  "metadata": {
+    "config_version": "0.1",
+    "created_date": "2026-04-28",
+    "description": "Bayesian Borrowing Analysis Configuration (v0.1 - Step 0 Complete)",
+    "status": "production-ready"
+  },
+  "model": {
+    "model_name": "borrowing_v1",
+    "outcome_type": "multi-outcome"
+  },
+  "borrowing": {
+    "a0": 0.5
+  },
+  "weighting": {
+    "use_ps_weight": true,
+    "trim_lower": 0.01,
+    "trim_upper": 0.99
+  },
+  "survival": {
+    "cut_points": [6, 12, 18, 24, 30]
+  },
+  "mcmc": {
+    "chains": 4,
+    "iter": 2000,
+    "warmup": 1000,
+    "seed": 20260407
+  },
+  "diagnostics": {
+    "rhat_threshold": 1.05,
+    "ess_bulk_min": 400,
+    "ess_tail_min": 400,
+    "divergent_allowed": 0,
+    "stop_on_failure": true
+  },
+  "output": {
+    "save_warmup": false,
+    "output_dir": "outputs"
+  }
+}
