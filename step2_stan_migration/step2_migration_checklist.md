@@ -1,5 +1,12 @@
 # Step 2 迁移验证清单
 
+## 0. 环境准备
+
+- [x] `cmdstanr` 已安装并可加载
+- [x] CmdStan 已安装（v2.38.0）并设置 path
+- [x] `stan_model_binary.stan` 编译通过
+- [x] binary 模型最小采样验证通过
+
 ## 1. 接口冻结
 
 - [x] binary / continuous / survival 三类结局的输入字段已明确

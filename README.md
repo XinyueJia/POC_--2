@@ -141,7 +141,7 @@
 ## 后续演进路径
 
 ### Step 0：冻结 workflow contracts
-当前已完成初版：
+当前已形成初版：
 
 - input contract
 - preprocessing boundary
@@ -151,7 +151,7 @@
 ---
 
 ### 3. Step 0：冻结 workflow contracts
-当前已完成初版，并补充了以下内容：
+当前已形成初版，并补充如下内容：
 
 - **input_contract.md**：明确数据格式、字段编码、单位规范
   - ✅ 补齐单位定义（time=months, age=years, albumin=g/L）
@@ -186,7 +186,7 @@
   - 作为后续 Stan 转写前的唯一冻结参考
 
 - **supplements/slides/slides.pdf**：Rmd / Stan workflow 可视化演示稿
-  - 3页幻灯片，用于在评审和协作讨论中快速对齐
+  - 3页幻灯片，用于在评审和协作讨论中统一理解
   - 重点覆盖：Rmd可见性层、执行管道、工程与统计边界
 
 ---
@@ -221,7 +221,7 @@
   - ✅ 创建 metadata.json 生成逻辑（Rmd L1258-1273）
   - ✅ 定义 warnings 收集机制（集成至诊断输出）
 
-以上补充项已同步到 `contracts/alignment_checklist.md`，当前可直接进入 Step 1 冻结规范维护。
+以上补充项已同步到 `contracts/alignment_checklist.md`，可进入 Step 1 冻结规范维护。
 
 ---
 
@@ -242,7 +242,7 @@
 
 ---
 
-### Step 2：Stan 迁移（初始化就绪）
+### Step 2：Stan 迁移（基础执行链路已可运行）
 在 Step 1 已冻结的前提下，将统计模型正式转写为 CmdStan workflow，包括：
 
 **核心交付物（P0 - 必须）：**
@@ -257,6 +257,11 @@
 **可选扩展（P1）：**
 - metadata.json 完整生成（复用 Rmd 逻辑）
 - Stan diagnostics 自动检查（同步 Rmd 阈值）
+
+**当前进展（2026-04-28）：**
+- ✅ CmdStan 环境安装完成（v2.38.0）
+- ✅ `cmdstanr` 已可识别 CmdStan path 与 version
+- ✅ 已完成 `stan_model_binary.stan` 编译与最小采样测试
 
 ---
 
@@ -286,7 +291,7 @@
 
 ## 当前使用建议
 
-这个仓库当前正处于 **Step 0 完成 → Step 0.5 完成 → Step 1 冻结 → Step 2 初始化就绪** 的阶段。建议的使用顺序：
+这个仓库当前正处于 **Step 0 完成 → Step 0.5 完成 → Step 1 冻结 → Step 2 基础执行链路已可运行** 的阶段。建议按照以下顺序阅读和使用：
 
 ### 第一步：理解整体框架
 1. 阅读本 README 的"仓库目标"和"当前仓库内容"部分，了解项目的整体目标
@@ -320,8 +325,8 @@
 1. 基于 `docs/step1_model_spec_template.md` 的冻结版模板，维护统计模型规范
 2. 从原型Rmd中提取并冻结：estimand、模型方程式、权重机制、prior 设置、诊断规则
 
-### 第四步：初始化Step 2（Stan 迁移）
-**Step 2 已就绪。** 后续工作包括：
+### 第四步：推进 Step 2（Stan 迁移）
+**Step 2 已完成环境配置与基础运行验证。** 后续工作包括：
 1. 创建 `step2_stan_migration/` 目录结构
 2. 基于 Step 1 冻结规范转写 3 个 Stan models（binary / continuous / survival）
 3. 实现数据格式转换层（Rmd preprocessing output → Stan data block）
@@ -350,9 +355,9 @@
 
 | 场景 | 操作 |
 |---|---|
-| 快速理解当前分析 | 读本 README + 四份 contract + Rmd 原型 |
+| 概览当前分析 | 阅读本 README、四份 contract 和 Rmd 原型 |
 | 评审当前方法的合理性 | 查看 `docs/step1_model_spec_template.md` 的冻结版框架，对应原型逐项检查 |
-| Stan 转写 | 直接使用冻结后的 Step 1 规范，进入 Stan 转写 |
+| Stan 转写 | 基于冻结后的 Step 1 规范，开展 Stan 转写 |
 | 后续工程化对接 | 基于 `alignment_checklist.md` 的优先修复列表确保所有 contract 完整 |
 
 ---
@@ -381,4 +386,4 @@
     └── slides.pdf                （🆕 编译后的流程演示幻灯片）
 ```
 
-推荐直接查看 `supplements/slides/slides.pdf` 作为当前 workflow 的演示入口。
+建议查看 `supplements/slides/slides.pdf` 作为当前 workflow 的展示入口。
