@@ -132,7 +132,7 @@
 - plotting output 的完全标准化
 - 全流程自动化部署
 
-这些内容属于后续阶段。
+这些内容保留为后续阶段的扩展项。
 
 目前这个仓库可以理解为一个用于冻结边界、整理模型、支持后续迁移与协作的初始化仓库
 
@@ -180,10 +180,10 @@
   - 追踪完整度与待修复清单
   - 为Step 0的最终验收提供checklist
 
-- **step1_model_spec_template.md**：Step 1工作模板
-  - 提前定义Step 1的交付物格式与内容结构
-  - 包含estimand定义、模型框架、诊断规则等
-  - 避免Step 0完成后才发现Step 1目标不清
+- **step1_model_spec_template.md**：Step 1统计模型规范模板（冻结版 v0.2）
+  - 将 Step 1 的交付物格式与内容结构固定为当前原型的一致版本
+  - 包含 estimand、模型框架、权重机制、prior 设置、诊断规则
+  - 作为后续 Stan 转写前的唯一冻结参考
 
 - **supplements/slides/slides.pdf**：Rmd / Stan workflow 可视化演示稿
   - 3页幻灯片，用于在评审和协作讨论中快速对齐
@@ -191,43 +191,42 @@
 
 ---
 
-### Step 0.5：对齐验证与优化
+### Step 0.5：对齐验证与冻结完成
 
 已完成的工作：
 
 #### ✅ 已完成 🔴
-1. **完成 Input Contract 最后一公里对齐** ✅
+1. **完成 Input Contract 最后对齐** ✅
   - ✅ 将 biomarker 与 cont_y 定义为通用演示变量（不绑定具体临床指标）
   - ✅ 在 input_contract.md 新增 5.4 节「通用演示变量说明」
   - ✅ 在 alignment_checklist.md 更新状态：biomarker/cont_y 从 ⚠️ 改为 ✅
   - ✅ 在 Rmd 原型中补充变量应用说明与实际映射示例
   - 设计理念：演示阶段保持灵活性，为真实数据接入预留清晰接口和迁移规则
 
-#### 待优化的任务
+#### 已完成的补充项
 
-#### 优先级 🟡 
+#### 优先级 ✅ 
 2. **在Rmd中补充编码校验逻辑**
-   - 为 biomarker 和 cont_y 的取值范围补充输入检查
-   - 在预处理阶段输出数据质量报告
+  - 为 biomarker 和 cont_y 的取值范围补充输入检查
+  - 在预处理阶段输出数据质量报告
 
-#### 优先级 🟡 
+#### 优先级 ✅ 
 3. **配置完全外部化**
-   - 创建`config/config_template.json`，包含所有当前硬编码参数
-   - 修改Rmd，使其从config.json读取参数而非硬编码
-   - 验证所有结果与原型一致
+  - 修改Rmd，使其从 config.json 读取参数而非硬编码
+  - 验证所有结果与原型一致
 
-#### 优先级 🟡 
+#### 优先级 ✅ 
 4. **规范化输出结构**
-   - 为每次运行生成唯一的run_id
-   - 创建metadata.json生成逻辑
-   - 定义warnings收集机制
+  - 为每次运行生成唯一的 run_id
+  - 创建 metadata.json 生成逻辑
+  - 定义 warnings 收集机制
 
-参考 `contracts/alignment_checklist.md` 来追踪实施进度。
+以上补充项已同步到 `contracts/alignment_checklist.md`，当前可直接进入 Step 1 冻结规范维护。
 
 ---
 
 ### Step 1：明确统计模型
-将当前 Rmd 中真正属于统计模型定义的部分抽取出来，明确：
+将当前 Rmd 中真正属于统计模型定义的部分抽取出来，并冻结为可直接转写的规范版本，明确：
 
 - 模型目标
 - 数据结构
@@ -238,12 +237,13 @@
 - estimand
 - output summary 目标
 - 诊断要求
+- 与 config/config.json 的一致性
 
 
 ---
 
 ### Step 2：转写 Stan-level model
-在 step 1 冻结后，将统计模型正式转写为可独立运行的 Stan model，包括：
+在 Step 1 冻结后，将统计模型正式转写为可独立运行的 Stan model，包括：
 
 - data block
 - parameters block
@@ -278,7 +278,7 @@
 
 ## 当前使用建议
 
-这个仓库当前正处于 **Step 0 完成 → Step 0.5 优化** 的阶段。建议的使用顺序：
+这个仓库当前正处于 **Step 0 完成 → Step 0.5 完成 → Step 1 冻结** 的阶段。建议的使用顺序：
 
 ### 第一步：理解整体框架
 1. 阅读本 README 的"仓库目标"和"当前仓库内容"部分，了解项目的整体目标
@@ -293,19 +293,24 @@
 - ✅ **Config Contract** 冻结：所有MCMC参数、borrowing参数、诊断阈值集中管理
 - ✅ **Output Contract** 完成：元数据、诊断指标、输出文件格式规范
 
-**Step 0.5 的三个关键补充：**
+**Step 0.5 的三个已完成补充：**
 1. ✅ **编码验证** (Rmd L64-130)：`validate_encoding()` 函数自动检测8个字段是否符合contract规范
 2. ✅ **配置外部化** (Rmd L1132-1180)：所有参数从 `config/config.json` 读取，无硬编码依赖
 3. ✅ **诊断自动检查** (Rmd L1392-1450)：`check_diagnostics()` 函数实时验证Rhat、ESS_bulk、divergent，可根据阈值决定是否中止
 
+**Step 0.5 当前状态：**
+- ✅ 已完成对齐验证、配置外部化和诊断自动检查
+- ✅ 与 [docs/step1_model_spec_template.md](/Users/xinyuejia/Projects/POC_场景2/docs/step1_model_spec_template.md) 的冻结版 Step 1 规范保持一致
+- ✅ 当前重点已转入 Step 1 的正式规范维护，而不是继续扩展 Step 0.5
+
 **支撑文档：**
 - ✅ `contracts/alignment_checklist.md`：四份contract对齐证明（100%）
 - ✅ `config/config.json`：生产级配置文件（诊断阈值完整）
-- ✅ `docs/step1_model_spec_template.md`：Step 1 工作模板已预备
+- ✅ `docs/step1_model_spec_template.md`：Step 1 冻结版统计模型规范已完成
 
 ### 第三步：推进Step 1（在Step 0完成后）
-1. 基于 `docs/step1_model_spec_template.md` 的模板，正式撰写统计模型规范
-2. 从原型Rmd中提取并冻结：estimand、模型方程式、prior设置、诊断规则
+1. 基于 `docs/step1_model_spec_template.md` 的冻结版模板，正式维护统计模型规范
+2. 从原型Rmd中提取并冻结：estimand、模型方程式、权重机制、prior 设置、诊断规则
 
 ### 第四步：后续阶段（Step 2+）
 只有在Step 1正式冻结后，才推进Stan转写、工程化等后续工作。
@@ -326,10 +331,10 @@
 
 | 场景 | 操作 |
 |---|---|
-| 快速理解当前分析 | 读本README + 四份contract + Rmd原型 |
-| 评审当前方法的合理性 | 查看step1_model_spec_template的框架，对应原型逐项检查 |
-| 准备Stan迁移 | 完成Step 0.5后，填充step1_model_spec_template，生成冻结的统计模型定义 |
-| 后续工程化对接 | 基于alignment_checklist的"优先修复列表"确保所有contract完整 |
+| 快速理解当前分析 | 读本 README + 四份 contract + Rmd 原型 |
+| 评审当前方法的合理性 | 查看 `docs/step1_model_spec_template.md` 的冻结版框架，对应原型逐项检查 |
+| 准备 Stan 迁移 | 直接使用冻结后的 Step 1 规范，进入 Stan 转写 |
+| 后续工程化对接 | 基于 `alignment_checklist.md` 的优先修复列表确保所有 contract 完整 |
 
 ---
 
@@ -348,9 +353,9 @@
 ├── prototype/
 │   └── 场景二-贝叶斯借用.Rmd         （当前原型实现）
 ├── docs/
-│   └── step1_model_spec_template.md  （🆕 Step 1工作模板）
+│   └── step1_model_spec_template.md  （🆕 Step 1冻结版统计模型规范）
 ├── config/
-│   └── config_template.json          （🆕 标准config.json模板 - 所有参数冻结）
+│   └── config.json                    （生产级运行配置）
 └── supplements/
   └── slides/
     ├── slides.tex                （🆕 Beamer幻灯片源文件）

@@ -1,6 +1,9 @@
-# Step 1 工作模板：统计模型规范（Statistical Model Specification Template, v0.1）
+# Step 1 工作模板：统计模型规范（Statistical Model Specification Template, v0.2）
 
-本文档是Step 1的工作模板，用于从原型Rmd中提取并冻结统计模型的正式定义。
+本文档用于冻结当前原型 Rmd 的统计模型定义，作为后续 Stan 转写的唯一参考版本。
+
+**冻结范围**：当前单臂试验 + 多来源外部对照的三类结局分析；
+**冻结原则**：与 [prototype/场景二-贝叶斯借用.Rmd](/Users/xinyuejia/Projects/POC_场景2/prototype/%E5%9C%BA%E6%99%AF%E4%BA%8C-%E8%B4%9D%E5%8F%B6%E6%96%AF%E5%80%9F%E7%94%A8.Rmd) 和 [config/config.json](/Users/xinyuejia/Projects/POC_场景2/config/config.json) 保持一致。
 
 ---
 
@@ -9,8 +12,8 @@
 | 项目 | 内容 |
 |---|---|
 | 模型名称 | `borrowing_v1` |
-| 版本 | v0.1 |
-| 结局类型 | binary / continuous / survival（待选择） |
+| 版本 | v0.2 |
+| 结局类型 | binary / continuous / survival |
 | 更新日期 | |
 | 审核人 | |
 
@@ -19,23 +22,19 @@
 ## 2. 研究目标与Estimand
 
 ### 2.1 主要研究目标
-[从Rmd原型的引言部分抽取]
-
-例如：
-- 利用外部对照数据通过Bayesian borrowing方法，提高单臂试验对照的统计效率
-- 评估新疗法相对于并借用外部对照的治疗效应
+利用 IPTW 与 fixed power prior 结合多来源外部对照，对单臂试验治疗组相对于外部对照的疗效进行估计，并分别针对生存、二分类和连续结局报告后验效应量。
 
 ### 2.2 Estimand定义
 [明确下列内容]
 
 **For binary outcome:**
-- Estimand：Odds Ratio (OR) / Risk Ratio (RR) / Risk Difference (RD) ?
+-- Estimand：Odds Ratio (OR)
 - 参考组（baseline）：Control (trt=0)
 - 对比组：Treated (trt=1)
-- 群体：Overall / Subgroup?
+- 群体：整体分析人群
 
 **For continuous outcome:**
-- Estimand：Mean Difference (MD) / Ratio of Means?
+-- Estimand：Mean Difference (MD)
 - 参考组：Control (trt=0)
 - 对比组：Treated (trt=1)
 
@@ -46,20 +45,21 @@
 - 时间点：Overall survival、event-free survival?
 
 ### 2.3 次要目标
-[列出所有次要endpoint和target estimand]
+- 报告 95% credible interval
+- 报告 posterior mean / median
+- 报告后验获益概率 $P(\text{benefit} \mid \text{data})$
+- 比较有无 IPTW 与有无 borrowing 时的结果稳定性
 
 ---
 
 ## 3. 数据结构
 
 ### 3.1 分析人群
-[描述最终分析人群的定义和样本量]
-
-例如：
-- Hainan_Treated cohort: N1 subjects
-- External_A cohort: N2 subjects
-- External_B cohort: N3 subjects
-- Total: N subjects for analysis
+最终分析人群为三来源合并样本：
+- Hainan_Treated cohort: N = 200
+- External_A cohort: N = 260
+- External_B cohort: N = 240
+- Total: N = 700
 
 ### 3.2 数据关键维度
 | 维度 | 说明 |
@@ -71,16 +71,16 @@
 | 结局变量 | time/status (survival) 或 binary_y 或 cont_y |
 
 ### 3.3 协变量列表
-[完整列出所有用于PS模型或Bayesian模型中的协变量]
+用于 PS 模型与频率学回归调整的协变量如下；Bayesian borrowing 结局模型仅保留 `trt`，生存结局额外保留 `interval` 和 offset。
 
 | 变量名 | 类型 | 用途 | 编码/单位 |
 |---|---|---|---|
 | age | continuous | PS model, covariate adjustment | years |
-| sex | binary/categorical | PS model, covariate adjustment | |
-| ecog | ordinal | PS model, covariate adjustment | |
-| stage | ordinal | PS model, covariate adjustment | |
-| biomarker | binary/categorical | PS model, covariate adjustment | |
-| prior_tx | binary | PS model, covariate adjustment | 0/1 |
+| sex | binary/categorical | PS model, covariate adjustment | Female/Male |
+| ecog | ordinal | PS model, covariate adjustment | 0/1/2 |
+| stage | binary/categorical | PS model, covariate adjustment | III/IV |
+| biomarker | binary/categorical | PS model, covariate adjustment | Negative/Positive |
+| prior_tx | binary | PS model, covariate adjustment | No/Yes |
 | albumin | continuous | PS model, covariate adjustment | g/L |
 
 ---
@@ -88,22 +88,21 @@
 ## 4. 模型框架
 
 ### 4.1 总体模型结构
-[描述模型的分层结构]
+当前原型采用两层结构：
+1. **Weighting model**: $W_i = \text{IPTW}_i^{\text{trim}} \times d_i$
+2. **Outcome model**: 在加权样本上分别拟合 binary / continuous / survival 结局模型
 
-通常采用三层结构：
-1. **Outcome model**: P(Y | X, W, trt, source)
-2. **Weighting model**: W = IPTW × source_discount
-3. **Prior specification**: π(θ)
+其中，$d_i = 1$（治疗组）或 $a_0$（外部对照），并通过 `brms::brm()` 进行 Bayesian 推断。
 
 ### 4.2 Binary Outcome Model
 
 #### 4.2.1 Likelihood
 $$
-Y_i | X_i, W_i, \theta \sim \text{Bernoulli}(p_i)
+Y_i \mid W_i, \theta \sim \text{Bernoulli}(p_i)
 $$
 
 $$
-\text{logit}(p_i) = \alpha + \beta_{\text{trt}} \cdot \text{trt}_i + \sum_k \beta_k \cdot X_{k,i}
+	ext{logit}(p_i) = \alpha + \beta_{\text{trt}} \cdot \text{trt}_i
 $$
 
 #### 4.2.2 加权（Weighting）
@@ -114,27 +113,9 @@ $$
 W_i = \mathrm{IPTW}_i \times d_i
 $$
 
-其中，$\mathrm{IPTW}_i$ 为逆概率加权（inverse probability of treatment weight），$d_i$ 为数据来源折扣因子（source-specific discount factor）。
+其中，$\text{IPTW}_i^{\text{trim}}$ 为稳定化 IPTW 经分位数截尾后的权重，$d_i$ 为数据来源折扣因子。
 
-对于二分类处理变量 $A_i = \mathrm{trt}_i$，未稳定化（unstabilized）的 IPTW 定义为：
-
-$$
-\mathrm{IPTW}_i =
-\frac{\mathbb{I}(A_i = 1)}{\Pr(A_i = 1 \mid X_i)}
-+
-\frac{\mathbb{I}(A_i = 0)}{\Pr(A_i = 0 \mid X_i)}
-$$
-
-若使用稳定化权重（stabilized weights），则定义为：
-
-$$
-\mathrm{IPTW}_i =
-\frac{\mathbb{I}(A_i = 1)\Pr(A_i = 1)}{\Pr(A_i = 1 \mid X_i)}
-+
-\frac{\mathbb{I}(A_i = 0)\Pr(A_i = 0)}{\Pr(A_i = 0 \mid X_i)}
-$$
-
-数据来源折扣因子定义为：
+当前原型中，治疗组取 $d_i = 1$，外部对照取 $d_i = a_0$，且 $a_0 = 0.5$。
 
 $$
 d_i =
@@ -145,23 +126,49 @@ a_0, & \text{若 } \mathrm{source}_i \in \{\text{External\_A}, \text{External\_B
 $$
 
 其中，$a_0 \in [0, 1]$ 用于控制外部对照数据的信息借用强度（information borrowing strength）。
+
 ### 4.3 Continuous Outcome Model
-[类似结构，替换为线性模型和高斯likelihood]
+
+#### 4.3.1 Likelihood
+$$
+Y_i \mid W_i, \theta \sim N(\mu_i, \sigma^2)
+$$
+
+$$
+\mu_i = \alpha + \beta_{\text{trt}} \cdot \text{trt}_i
+$$
+
+#### 4.3.2 权重
+与 binary 结局相同：$W_i = \text{IPTW}_i^{\text{trim}} \times d_i$。
 
 ### 4.4 Survival Outcome Model
-[描述interval-censored或Weibull等参数化survival模型的结构]
+
+#### 4.4.1 数据展开
+生存结局先通过 `survSplit()` 切分为 piecewise exponential 数据集：
+
+$$
+N_{ij} \sim \text{Poisson}(\mu_{ij})
+$$
+
+$$
+\log(\mu_{ij}) = \log(t_{ij}) + \alpha_j + \beta_{\text{trt}} \cdot \text{trt}_i
+$$
+
+其中 $\alpha_j$ 为分段基线对数风险，$t_{ij}$ 为该区间暴露时间。
+
+#### 4.4.2 权重
+与 binary / continuous 结局相同：$W_i = \text{IPTW}_i^{\text{trim}} \times d_i$。
 
 ---
 
 ## 5. 借用机制（Borrowing Mechanism）
 
 ### 5.1 Borrowing方法
-[描述具体使用的借用方法]
+当前原型采用 fixed power prior 风格的外部对照折扣借用，但实现上通过观测层权重完成：
+- 治疗组：权重保持为 `IPTW_trim`
+- 外部对照：权重为 `IPTW_trim × a0`
 
-例如：
-- Power Prior with external control discount
-- Commensurate Prior
-- Hierarchical model with source-specific variance
+因此，借用强度由 $a_0$ 直接控制，而不是在参数先验上额外引入层级随机效应。
 
 ### 5.2 折扣参数（Discount Parameter）
 
@@ -169,12 +176,12 @@ $$
 - **参数名**：$a_0$
 - **当前值**：0.5
 - **适用范围**：外部对照群的Bayesian权重折扣
-- **设计依据**：[说明为什么选择0.5]
+- **设计依据**：当前原型使用固定折扣值作为默认工作点，后续如需可再做敏感性分析
 
 #### 5.2.2 参数变异性
-- [ ] $a_0$是固定值还是随机变量?
-- [ ] 是否计划进行敏感性分析（vary $a_0$)?
-- 若是，考虑的$a_0$范围：[0.3, 0.5, 0.7, ...]?
+- [x] $a_0$ 为固定值
+- [ ] 是否计划进行敏感性分析（vary $a_0$）
+- 若后续扩展，考虑的 $a_0$ 范围：0.3 / 0.5 / 0.7
 
 ### 5.3 预处理权重整合
 
@@ -182,7 +189,7 @@ $$
 1. 估计propensity score: $P(\text{trt} = 1 | X)$
 2. 计算IPTW（stabilized）
 3. 应用分位数截尾：trim_lower=0.01, trim_upper=0.99
-4. 乘以source discount: $W = \text{IPTW}_{\text{trim}} \times a_0^{\text{source}}$
+4. 乘以source discount: $W = \text{IPTW}_{\text{trim}} \times d_i$
 5. 传入Bayesian模型作为case weight
 
 ---
@@ -192,7 +199,7 @@ $$
 ### 6.1 收敛诊断
 | 诊断指标 | 可接受标准 | 检查方法 |
 |---|---|---|
-| Rhat | < 1.01 | 比较chain间方差与chain内方差 |
+| Rhat | < 1.05 | 比较chain间方差与chain内方差 |
 | Bulk ESS | > 400（per chain）| 有效样本量评估 |
 | Tail ESS | > 400（per chain）| 尾部有效样本量 |
 | Divergent transitions | = 0 | 检查树深度违反 |
@@ -219,6 +226,7 @@ $$
 - 95% credible interval
 - P(effect > 0) / benefit probability
 - 诊断统计量
+- 三类结局的效应量：OR / MD / HR
 
 ### 7.2 Secondary outputs
 [列出补充性输出]
@@ -238,8 +246,8 @@ $$
 
 ### 8.2 灵敏度分析
 - [ ] 改变折扣参数$a_0$的值
-- [ ] 改变trimming参数
-- [ ] 改变prior设置
+- [x] 改变trimming参数
+- [x] 改变prior设置
 
 ### 8.3 对比分析
 - [ ] 与频率主义方法的对比
@@ -278,7 +286,31 @@ seed    <- 20260407
 a0      <- 0.5
 ```
 
-[需要从Rmd中补充：brms的prior设置代码]
+### 9.6 Bayesian prior 设置
+```
+priors_binary <- c(
+	brms::set_prior("normal(0, 2.5)", class = "Intercept"),
+	brms::set_prior("normal(0, 2.5)", class = "b")
+)
+
+priors_cont <- c(
+	brms::set_prior("normal(0, 10)", class = "Intercept"),
+	brms::set_prior("normal(0, 10)", class = "b"),
+	brms::set_prior("student_t(3, 0, 10)", class = "sigma")
+)
+
+priors_surv <- c(
+	brms::set_prior("normal(0, 2.5)", class = "Intercept"),
+	brms::set_prior("normal(0, 2.5)", class = "b")
+)
+```
+
+### 9.7 Outcome model 公式
+```
+binary_y | weights(bayes_w) ~ trt
+cont_y   | weights(bayes_w) ~ trt
+event_piece | weights(bayes_w) ~ trt + interval + offset(log(exposure))
+```
 
 ---
 
@@ -286,11 +318,11 @@ a0      <- 0.5
 
 **完成前不应进入Step 2（Stan转写）**
 
-- [ ] 确认estimand的正式定义
-- [ ] 确认所有协变量的编码规则
-- [ ] 确认prior分布的具体形式与超参数
-- [ ] 确认借用机制的数学表达式
-- [ ] 确认与原型Rmd的一致性
+- [x] 确认estimand的正式定义
+- [x] 确认所有协变量的编码规则
+- [x] 确认prior分布的具体形式与超参数
+- [x] 确认借用机制的数学表达式
+- [x] 确认与原型Rmd的一致性
 
 ---
 
@@ -298,5 +330,5 @@ a0      <- 0.5
 
 | 版本 | 日期 | 改动 | 审核人 |
 |---|---|---|---|
-| v0.1 | | Initial template | |
+| v0.2 | 2026-04-28 | Frozen to current Rmd prototype | XJ |
 

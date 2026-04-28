@@ -1,6 +1,6 @@
-# 原型 → Contract 对齐检查单（Alignment Checklist, v0.1）
+# 原型 → Contract 对齐检查单（Alignment Checklist, v0.2）
 
-本文档用于验证当前Rmd原型是否与四份contract对齐，并追踪完成状态。
+本文档用于验证当前 Rmd 原型是否与四份 contract 对齐，并追踪完成状态。
 
 ---
 
@@ -177,12 +177,19 @@
 - [✅] 支持动态参数调整而无需修改 Rmd 代码
 
 ### 优先级 3：诊断失败自动处理 ✅ **完成**
-**目标**：为 Step 1（Stan 转写）准备标准化验证框架  
+**目标**：为 Step 1 冻结版统计模型规范与后续 Stan 转写准备标准化验证框架  
 **已完成任务**：
 - [✅] 在 Rmd 第 1392-1450 行添加 `check_diagnostics()` 函数
 - [✅] 自动检测 Rhat、ESS_bulk、divergent transitions
 - [✅] 根据 config 的 `stop_on_failure` 设置决定是否中止分析
 - [✅] 生成详细的诊断报告和建议措施
+
+### Step 1 模板状态 ✅ **完成**
+**目标**：冻结统计模型规范，使其与当前原型和 config 一致  
+**已完成任务**：
+- [✅] 将 `docs/step1_model_spec_template.md` 更新为冻结版 v0.2
+- [✅] 同步 README 中 Step 1 的说明、文件组织和使用场景
+- [✅] 固化 estimand、likelihood、权重机制、prior、诊断规则
 
 ---
 
