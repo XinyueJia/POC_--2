@@ -37,8 +37,15 @@ extract_treatment_draws <- function(stan_fit, candidate_parameters = c("b_trt", 
 
   draw_frame <- as.data.frame(draw_data)
   for (parameter_name in candidate_parameters) {
-    if (parameter_name %in% names(draw_frame)) {
-      return(as.numeric(draw_frame[[parameter_name]]))
+    matching_columns <- names(draw_frame)[
+      names(draw_frame) == parameter_name | endsWith(names(draw_frame), paste0(".", parameter_name)) | endsWith(names(draw_frame), parameter_name)
+    ]
+    if (length(matching_columns) > 0) {
+      matching_values <- unlist(draw_frame[matching_columns], use.names = FALSE)
+      matching_values <- matching_values[!is.na(matching_values)]
+      if (length(matching_values) > 0) {
+        return(as.numeric(matching_values))
+      }
     }
   }
 
@@ -60,7 +67,7 @@ summarize_step2_posterior <- function(draws, outcome, effect, transform = identi
   )
 }
 
-extract_step2_diagnostics <- function(stan_fit) {
+extract_step2_diagnostics <- function(stan_fit, outcome_type) {
   summary_frame <- NULL
 
   summary_member <- get_object_member(stan_fit, "summary")
@@ -95,15 +102,18 @@ extract_step2_diagnostics <- function(stan_fit) {
     if (!is.null(diag_result)) {
       diag_array <- as.array(diag_result)
       if (length(dim(diag_array)) >= 3) {
-        divergent_slice <- diag_array[, , dim(diag_array)[3], drop = TRUE]
-        if (is.matrix(divergent_slice) || is.array(divergent_slice)) {
-          n_divergent <- sum(divergent_slice[, "divergent__"], na.rm = TRUE)
+        variable_dimnames <- dimnames(diag_array)[[3]]
+        divergent_index <- match("divergent__", variable_dimnames)
+        if (!is.na(divergent_index)) {
+          divergent_values <- diag_array[, , divergent_index, drop = TRUE]
+          n_divergent <- sum(divergent_values, na.rm = TRUE)
         }
       }
     }
   }
 
   list(
+    outcome = tools::toTitleCase(outcome_type),
     rhat_max = rhat_max,
     ess_bulk_min = ess_bulk_min,
     ess_tail_min = ess_tail_min,
@@ -151,10 +161,11 @@ build_step2_summary_output <- function(stan_fit, outcome_type, run_metadata = li
     benefit_rule = benefit_rule
   )
 
-  diagnostics <- extract_step2_diagnostics(stan_fit)
+  diagnostics <- extract_step2_diagnostics(stan_fit, outcome_type = outcome_type)
   warnings <- default_if_null(run_metadata$warnings, character())
 
   list(
+    outcome = tools::toTitleCase(outcome_type),
     run_id = default_if_null(run_metadata$run_id, NA_character_),
     model_name = default_if_null(run_metadata$model_name, NA_character_),
     outcome_type = outcome_type,
@@ -166,7 +177,9 @@ build_step2_summary_output <- function(stan_fit, outcome_type, run_metadata = li
     benefit_probability = posterior_result$post_prob_benefit,
     rhat_max = diagnostics$rhat_max,
     ess_bulk_min = diagnostics$ess_bulk_min,
+    ess_tail_min = diagnostics$ess_tail_min,
     n_divergent = diagnostics$n_divergent,
+    diagnostics_passed = default_if_null(run_metadata$diagnostics_passed, NA),
     warnings = warnings,
     result = posterior_result,
     diagnostics = diagnostics

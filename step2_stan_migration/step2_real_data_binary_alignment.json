@@ -1,0 +1,24 @@
+{
+  "test_metadata": {
+    "test_type": ["real_data_binary_alignment"],
+    "date": ["2026-04-29 12:10:10"],
+    "description": ["真实数据 Binary 对齐验证"],
+    "data_source": ["prototype/demo_data_advanced.xlsx"],
+    "sample_size": [700],
+    "n_trt": [200],
+    "n_control": [500]
+  },
+  "results": {
+    "rmd_or": [0.3694],
+    "stan_or": [0.2825],
+    "ratio": [1.3076],
+    "direction_match": [true],
+    "diagnostics": {
+      "rhat_max": [1.0015],
+      "ess_bulk_min": [1852.5215],
+      "ess_tail_min": [1881.3116],
+      "n_divergent": [0]
+    },
+    "conclusion": ["良好对齐"]
+  }
+}

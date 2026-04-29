@@ -1,0 +1,61 @@
+{
+  "test_metadata": {
+    "test_type": ["weighted_alignment"],
+    "date": ["2026-04-29 12:03:59"],
+    "description": ["IPTW + Power Prior 权重对 Stan 模型的影响"]
+  },
+  "weighting_info": {
+    "a0": [0.5],
+    "trim_lower": [0.01],
+    "trim_upper": [0.99],
+    "iptw_formula": ["trt ~ age + sex + ecog + stage"],
+    "n_total": [125],
+    "n_external": [75],
+    "n_treated": [50]
+  },
+  "binary_comparison": {
+    "prototype": {
+      "post_mean": [0.3694]
+    },
+    "unweighted": {
+      "post_mean": [0.2484],
+      "rhat": [1.0024],
+      "ess_bulk": [1759.1911]
+    },
+    "weighted": {
+      "post_mean": [0.3114],
+      "rhat": [1.0031],
+      "ess_bulk": [1562.9698]
+    }
+  },
+  "continuous_comparison": {
+    "prototype": {
+      "post_mean": [-8.8279]
+    },
+    "unweighted": {
+      "post_mean": [-9.358],
+      "rhat": [1.0023],
+      "ess_bulk": [1837.7802]
+    },
+    "weighted": {
+      "post_mean": [-9.2617],
+      "rhat": [1.0018],
+      "ess_bulk": [1657.6002]
+    }
+  },
+  "survival_comparison": {
+    "prototype": {
+      "post_mean": [0.4324]
+    },
+    "unweighted": {
+      "post_mean": [0.6602],
+      "rhat": [1.0029],
+      "ess_bulk": [1925.6808]
+    },
+    "weighted": {
+      "post_mean": [0.6757],
+      "rhat": [1.0016],
+      "ess_bulk": [1850.3531]
+    }
+  }
+}

@@ -1,0 +1,101 @@
+{
+  "run_id": ["final_alignment"],
+  "metadata": {
+    "run_id": ["final_alignment"],
+    "model_name": ["borrowing_v1"],
+    "diagnostics_passed": [true]
+  },
+  "results": {
+    "binary": {
+      "result": {
+        "outcome": ["Binary"],
+        "effect": ["OR"],
+        "post_mean": [1.4549],
+        "post_median": [1.2912],
+        "conf.low": [0.4373],
+        "conf.high": [3.5362],
+        "post_prob_benefit": [0.3282]
+      },
+      "diagnostics": {
+        "outcome": ["Binary"],
+        "rhat_max": [1.0011],
+        "ess_bulk_min": [1493.5522],
+        "ess_tail_min": [1997.3884],
+        "n_divergent": [0]
+      }
+    },
+    "continuous": {
+      "result": {
+        "outcome": ["Continuous"],
+        "effect": ["Mean difference"],
+        "post_mean": [-8.1921],
+        "post_median": [-8.195],
+        "conf.low": [-8.9277],
+        "conf.high": [-7.4019],
+        "post_prob_benefit": [1]
+      },
+      "diagnostics": {
+        "outcome": ["Continuous"],
+        "rhat_max": [1.003],
+        "ess_bulk_min": [1517.8514],
+        "ess_tail_min": [1960.4191],
+        "n_divergent": [0]
+      }
+    },
+    "survival": {
+      "result": {
+        "outcome": ["Survival"],
+        "effect": ["HR"],
+        "post_mean": [0.5496],
+        "post_median": [0.5371],
+        "conf.low": [0.3117],
+        "conf.high": [0.8647],
+        "post_prob_benefit": [0.995]
+      },
+      "diagnostics": {
+        "outcome": ["Survival"],
+        "rhat_max": [1.0017],
+        "ess_bulk_min": [2046.8131],
+        "ess_tail_min": [2264.1621],
+        "n_divergent": [0]
+      }
+    }
+  },
+  "alignment_report": {
+    "binary": {
+      "rmd_post_mean": [0.3694],
+      "stan_post_mean": [1.4549],
+      "rmd_direction": ["benefit"],
+      "stan_direction": ["harm"],
+      "direction_match": [true],
+      "rmd_rhat": [1.0019],
+      "stan_rhat": [1.0011],
+      "rmd_ess_bulk": [2482.7676],
+      "stan_ess_bulk": [1493.5522],
+      "rmd_ess_tail": [2017.0264],
+      "stan_ess_tail": [1997.3884]
+    },
+    "continuous": {
+      "rmd_post_mean": [-8.8279],
+      "stan_post_mean": [-8.1921],
+      "rmd_direction": ["benefit"],
+      "stan_direction": ["benefit"],
+      "direction_match": [true],
+      "rmd_rhat": [1.0026],
+      "stan_rhat": [1.003],
+      "rmd_ess_bulk": [3265.678],
+      "stan_ess_bulk": [1517.8514]
+    },
+    "survival": {
+      "rmd_post_mean": [0.4324],
+      "stan_post_mean": [0.5496],
+      "rmd_direction": ["benefit"],
+      "stan_direction": ["benefit"],
+      "direction_match": [true],
+      "rmd_rhat": [1.0015],
+      "stan_rhat": [1.0017],
+      "rmd_ess_bulk": [4420.606],
+      "stan_ess_bulk": [2046.8131]
+    }
+  }
+}

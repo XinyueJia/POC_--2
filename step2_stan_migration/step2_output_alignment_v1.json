@@ -1,0 +1,64 @@
+{
+  "run_id": ["alignment_v1"],
+  "metadata": {
+    "run_id": ["alignment_v1"],
+    "model_name": ["borrowing_v1"],
+    "diagnostics_passed": [true]
+  },
+  "results": {
+    "binary": {
+      "result": {
+        "outcome": ["Binary"],
+        "effect": ["OR"],
+        "post_mean": [0.8025],
+        "post_median": [0.7374],
+        "conf.low": [0.3335],
+        "conf.high": [1.651],
+        "post_prob_benefit": [0.7735]
+      },
+      "diagnostics": {
+        "outcome": ["Binary"],
+        "rhat_max": [1.0024],
+        "ess_bulk_min": [1295.8327],
+        "ess_tail_min": [1398.6986],
+        "n_divergent": [0]
+      }
+    },
+    "continuous": {
+      "result": {
+        "outcome": ["Continuous"],
+        "effect": ["Mean difference"],
+        "post_mean": [-9.5139],
+        "post_median": [-9.518],
+        "conf.low": [-10.222],
+        "conf.high": [-8.7879],
+        "post_prob_benefit": [1]
+      },
+      "diagnostics": {
+        "outcome": ["Continuous"],
+        "rhat_max": [1.0044],
+        "ess_bulk_min": [1614.0665],
+        "ess_tail_min": [1739.0148],
+        "n_divergent": [0]
+      }
+    },
+    "survival": {
+      "result": {
+        "outcome": ["Survival"],
+        "effect": ["HR"],
+        "post_mean": [1.0544],
+        "post_median": [1.0246],
+        "conf.low": [0.6217],
+        "conf.high": [1.6705],
+        "post_prob_benefit": [0.4612]
+      },
+      "diagnostics": {
+        "outcome": ["Survival"],
+        "rhat_max": [1.0018],
+        "ess_bulk_min": [1812.63],
+        "ess_tail_min": [2370.9245],
+        "n_divergent": [0]
+      }
+    }
+  }
+}
