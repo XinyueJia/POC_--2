@@ -323,6 +323,44 @@ Rscript R/run_prototype_aligned_validation.R
 
 ---
 
+### Step 2.7：brms-vs-CmdStan numerical comparison
+
+Step 2.6 证明 CmdStan workflow 可以在 Rmd prototype 同源模拟数据上运行。Step 2.7 进一步使用 brms reference models 在同一份 `data/preprocessed_demo.rds` 上生成 reference summary，然后与 Step 2.5 / CmdStan summary 做数值对照。
+
+当前对比重点是：
+
+- posterior mean 的数量级
+- binary OR / continuous mean difference / survival HR 的方向一致性
+- 95% credible interval overlap
+- benefit probability 差异
+- diagnostics pass/fail consistency
+
+HMC 随机采样结果不要求逐数字完全一致。默认 quick mode 用于本地 migration sanity check；full mode 使用 `spec/analysis_spec.R` 中的 MCMC 设置。
+
+当前 full mode comparison 已完成：
+
+- `outputs/prototype_reference_summary.json`：`brms_mode = full`，`chains = 4`，`iter = 2000`，`warmup = 1000`
+- `outputs/prototype_cmdstan_comparison.json`：`comparison_status = completed`
+- 三类 outcome 的 direction consistency 均为 `true`
+- 三类 outcome 的 95% credible interval overlap 均为 `true`
+- brms 与 CmdStan diagnostics 均通过
+
+**运行命令：**
+
+```bash
+Rscript R/run_brms_vs_cmdstan_comparison.R
+```
+
+Full mode：
+
+```bash
+Rscript R/run_brms_vs_cmdstan_comparison.R full
+```
+
+更多说明见 `docs/brms_vs_cmdstan_comparison.md`。
+
+---
+
 ### Step 3：Plaintext CmdStan Engine Demo Package
 
 Step 3 将 Step 2.5 产物打包成一个面向加密 / 工程专家的明文 CmdStan demo package。它展示：

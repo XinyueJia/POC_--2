@@ -1,11 +1,71 @@
 {
-  "status": "not_run",
-  "reason": "Full brms prototype rerun is optional in v0.1",
-  "expected_comparison": [
-    "binary OR direction",
-    "continuous mean difference direction",
-    "survival HR direction",
-    "posterior interval broad agreement",
-    "diagnostics pass/fail consistency"
+  "run_id": "brms_reference_20260429_170844",
+  "model_name": "borrowing_v1",
+  "analysis_spec_version": "0.1",
+  "reference_engine": "brms",
+  "data_source": "prototype_aligned_simulated_data",
+  "brms_mode": "full",
+  "chains": 4,
+  "iter": 2000,
+  "warmup": 1000,
+  "seed": 20260407,
+  "outcomes": [
+    {
+      "run_id": "brms_reference_20260429_170844",
+      "model_name": "borrowing_v1",
+      "outcome_type": "binary",
+      "estimand": "OR",
+      "posterior_mean": 0.3694,
+      "posterior_median": 0.3632,
+      "ci_95_lower": 0.2383,
+      "ci_95_upper": 0.5368,
+      "benefit_probability": 1,
+      "diagnostics": {
+        "rhat_max": 1.0019,
+        "ess_bulk_min": 2482.7676,
+        "ess_tail_min": 2017.0264,
+        "n_divergent": 0,
+        "diagnostics_passed": true
+      },
+      "warnings": []
+    },
+    {
+      "run_id": "brms_reference_20260429_170844",
+      "model_name": "borrowing_v1",
+      "outcome_type": "continuous",
+      "estimand": "Mean difference",
+      "posterior_mean": -8.8279,
+      "posterior_median": -8.8288,
+      "ci_95_lower": -10.397,
+      "ci_95_upper": -7.2819,
+      "benefit_probability": 1,
+      "diagnostics": {
+        "rhat_max": 1.0026,
+        "ess_bulk_min": 3265.678,
+        "ess_tail_min": 2833.6206,
+        "n_divergent": 0,
+        "diagnostics_passed": true
+      },
+      "warnings": []
+    },
+    {
+      "run_id": "brms_reference_20260429_170844",
+      "model_name": "borrowing_v1",
+      "outcome_type": "survival",
+      "estimand": "HR",
+      "posterior_mean": 0.4324,
+      "posterior_median": 0.429,
+      "ci_95_lower": 0.3448,
+      "ci_95_upper": 0.5365,
+      "benefit_probability": 1,
+      "diagnostics": {
+        "rhat_max": 1.0015,
+        "ess_bulk_min": 4420.606,
+        "ess_tail_min": 2258.7386,
+        "n_divergent": 0,
+        "diagnostics_passed": true
+      },
+      "warnings": []
+    }
   ]
 }

@@ -134,6 +134,8 @@ engine_package/outputs/summaries/plaintext_summary_output.json
 
 这仍然是 synthetic / simulated data，不是真实研究数据。它用于 plaintext reference implementation、migration validation 和 secure-computing handoff。
 
+The current expected outputs are generated from prototype-aligned simulated data. A completed full-mode brms-vs-CmdStan comparison report is available in `outputs/prototype_cmdstan_comparison.json` and can be used as an additional migration-validation artifact.
+
 真实部署时，只需要由上游流程生成相同 schema 的 JSON input，即可替换这些 demo input；Stan model、config contract 和 output contract 不应因为替换真实输入而改变。
 
 ## 10. 统计设计人员可以修改的内容
