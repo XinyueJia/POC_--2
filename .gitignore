@@ -31,6 +31,9 @@ cmdstan_model_*
 models/binary
 models/continuous
 models/survival
+engine_package/models/binary
+engine_package/models/continuous
+engine_package/models/survival
 
 # Python
 __pycache__/
@@ -45,6 +48,9 @@ venv/
 # Output and logs
 output/
 outputs/cmdstan/
+engine_package/outputs/draws/*
+engine_package/outputs/logs/*
+engine_package/outputs/summaries/*
 logs/
 *.log
 *.err

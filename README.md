@@ -295,16 +295,36 @@ Rscript R/run_statistical_design_package.R
 
 ---
 
-### Step 3：形成标准执行流程
-将以下部分解耦：
+### Step 3：Plaintext CmdStan Engine Demo Package
 
-- preprocessing
-- model file
-- config
-- execution
-- output packaging
+Step 3 将 Step 2.5 产物打包成一个面向加密 / 工程专家的明文 CmdStan demo package。它展示：
 
-形成更稳定的 CmdStan / standard engine workflow。
+- 使用哪些 Stan model 文件
+- 消耗哪些 JSON input 文件
+- 如何用 CmdStan 明文运行模型
+- 预期输出结构是什么
+- 后续哪些部分应由加密 / 工程团队接手
+
+边界说明：
+
+- 这不是安全计算实现
+- 这不是 MPC
+- 这不是加密计算
+- 这不拆解 CmdStan 内部
+- CmdStan 在这里被视作外部黑箱推断引擎
+
+**最小运行命令：**
+
+```bash
+export CMDSTAN=/path/to/cmdstan
+bash engine_package/scripts/compile_models.sh
+bash engine_package/scripts/run_all.sh
+python engine_package/scripts/collect_outputs.py  # or python3
+```
+
+Step 3 之后，加密 / 工程专家可以评估如何处理 CmdStan binary、JSON input、output artifacts 和 runtime isolation。
+
+更多说明见 `engine_package/README_for_encryption_team.md` 和 `docs/plaintext_cmdstan_engine_package.md`。
 
 ---
 
@@ -321,7 +341,7 @@ Rscript R/run_statistical_design_package.R
 
 ## 当前使用建议
 
-这个仓库当前正处于 **Step 0 完成 → Step 0.5 完成 → Step 1 冻结 → Step 2 对齐验证完成 → Step 2.5 设计包生成器完成 → Step 3 准备启动** 的阶段。建议按照以下顺序阅读和使用：
+这个仓库当前正处于 **Step 0 完成 → Step 0.5 完成 → Step 1 冻结 → Step 2 对齐验证完成 → Step 2.5 设计包生成器完成 → Step 3 明文 CmdStan engine demo 完成** 的阶段。建议按照以下顺序阅读和使用：
 
 ### 第一步：理解整体框架
 1. 阅读本 README 的"仓库目标"和"当前仓库内容"部分，了解项目的整体目标
@@ -370,10 +390,18 @@ Rscript R/run_statistical_design_package.R
 3. 查看自动生成的 `config/`、`data/` 和 `outputs/`
 4. 只有 likelihood、borrowing mechanism、estimand 或协变量结构变化时，才需要修改 `models/*.stan`
 
-### 第六步：后续阶段（Step 3+）
-在 Step 2 Stan 迁移完成并验证后，再推进：
-- Step 3：标准执行流程解耦（preprocessing / model / config / execution / packaging）
-- Step 4：工程化封装与安全执行对接
+### 第六步：查看 Step 3（Plaintext CmdStan Engine Demo）
+1. 阅读 `engine_package/README_for_encryption_team.md`
+2. 确认 `engine_package/models/`、`data/`、`config/` 和 `expected_outputs/` 的 contract
+3. 在本地设置 `CMDSTAN`
+4. 运行 `bash engine_package/scripts/compile_models.sh`
+5. 运行 `bash engine_package/scripts/run_all.sh`
+6. 运行 `python engine_package/scripts/collect_outputs.py`
+
+### 第七步：后续阶段（Step 4+）
+在 Step 3 明文 demo 完成后，再推进：
+- Step 4：工程化封装、runtime isolation 与安全执行对接
+- 后续由加密 / 工程专家评估 CmdStan binary、JSON input、output artifacts 和执行环境适配方案
 
 ---
 
@@ -395,6 +423,7 @@ Rscript R/run_statistical_design_package.R
 | 评审当前方法的合理性 | 查看 `docs/step1_model_spec_template.md` 的冻结版框架，对应原型逐项检查 |
 | Stan 转写 / 复核 | 查看 `step2_stan_migration/models/`、`R/` 和 `reports/` 中已完成的 Stan 迁移产物 |
 | 统计设计参数验证 | 修改 `spec/analysis_spec.R` 后运行 `Rscript R/run_statistical_design_package.R` |
+| 加密 / 工程对接评审 | 查看 `engine_package/README_for_encryption_team.md` 并运行明文 CmdStan demo |
 | 后续工程化对接 | 基于 `contracts/alignment_checklist.md` 和 `step2_stan_migration/step2_migration_checklist.md` 确认 contract 与 Stan 输出一致 |
 
 ---
@@ -438,6 +467,31 @@ Rscript R/run_statistical_design_package.R
 │   ├── summary_output.json
 │   ├── metadata.json
 │   └── diagnostics.json
+├── engine_package/
+│   ├── README_for_encryption_team.md
+│   ├── MANIFEST.md
+│   ├── config/
+│   │   └── config.json
+│   ├── models/
+│   │   ├── binary.stan
+│   │   ├── continuous.stan
+│   │   └── survival.stan
+│   ├── data/
+│   │   ├── stan_input_binary.json
+│   │   ├── stan_input_continuous.json
+│   │   └── stan_input_survival.json
+│   ├── scripts/
+│   │   ├── compile_models.sh
+│   │   ├── run_binary.sh
+│   │   ├── run_continuous.sh
+│   │   ├── run_survival.sh
+│   │   ├── run_all.sh
+│   │   └── collect_outputs.py
+│   ├── expected_outputs/
+│   │   ├── summary_output.json
+│   │   ├── metadata.json
+│   │   └── diagnostics.json
+│   └── outputs/                       （明文 CmdStan demo 运行产物）
 ├── step2_stan_migration/
 │   ├── README.md                      （Step 2 工作区说明）
 │   ├── step2_migration_checklist.md   （Stan↔Rmd 迁移验证清单）

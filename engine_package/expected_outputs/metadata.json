@@ -1,0 +1,27 @@
+{
+  "run_id": "borrowing_v1_20260429_145925",
+  "model_name": "borrowing_v1",
+  "analysis_spec_version": "0.1",
+  "generated_at": "2026-04-29T14:59:28+0800",
+  "config_path": "config/config.json",
+  "stan_input_paths": {
+    "binary": "data/stan_input_binary.json",
+    "continuous": "data/stan_input_continuous.json",
+    "survival": "data/stan_input_survival.json"
+  },
+  "model_paths": {
+    "binary": "models/binary.stan",
+    "continuous": "models/continuous.stan",
+    "survival": "models/survival.stan"
+  },
+  "cmdstan_run_paths": {
+    "binary": "outputs/cmdstan/borrowing_v1_20260429_145925/binary",
+    "continuous": "outputs/cmdstan/borrowing_v1_20260429_145925/continuous",
+    "survival": "outputs/cmdstan/borrowing_v1_20260429_145925/survival"
+  },
+  "output_paths": {
+    "summary_output": "outputs/summary_output.json",
+    "metadata": "outputs/metadata.json",
+    "diagnostics": "outputs/diagnostics.json"
+  }
+}
