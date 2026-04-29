@@ -1,0 +1,20 @@
+# GitHub Linguist classification.
+# Documentation and generated presentation artifacts are excluded from language statistics.
+
+*.md linguist-documentation
+*.Rmd linguist-documentation
+
+docs/** linguist-documentation
+contracts/** linguist-documentation
+engine_package/README_for_encryption_team.md linguist-documentation
+engine_package/MANIFEST.md linguist-documentation
+step2_stan_migration/reports/** linguist-documentation
+step2_stan_migration/README.md linguist-documentation
+step2_stan_migration/step2_migration_checklist.md linguist-documentation
+
+supplements/slides/** linguist-documentation
+*.tex linguist-documentation
+*.nav linguist-generated
+*.snm linguist-generated
+*.synctex.gz linguist-generated
+*.pdf linguist-documentation

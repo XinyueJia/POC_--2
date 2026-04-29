@@ -1,0 +1,36 @@
+{
+  "package": "plaintext_cmdstan_engine_demo",
+  "summary_type": "lightweight_plaintext_demo_summary",
+  "outcomes": [
+    {
+      "outcome_type": "binary",
+      "estimand": "OR",
+      "posterior_mean": 0.7775596868268042,
+      "posterior_median": 0.5996789661980685,
+      "ci_95_lower": 0.19005578202361212,
+      "ci_95_upper": 2.2496620187249055,
+      "benefit_probability": 0.77,
+      "n_draws": 1000
+    },
+    {
+      "outcome_type": "continuous",
+      "estimand": "Mean difference",
+      "posterior_mean": -2.043691623275,
+      "posterior_median": -2.0681564,
+      "ci_95_lower": -5.1758183075,
+      "ci_95_upper": 1.298098499999999,
+      "benefit_probability": 0.882,
+      "n_draws": 1000
+    },
+    {
+      "outcome_type": "survival",
+      "estimand": "HR",
+      "posterior_mean": 0.5919004851738048,
+      "posterior_median": 0.5566978916286196,
+      "ci_95_lower": 0.2926972159909436,
+      "ci_95_upper": 1.1183530465831206,
+      "benefit_probability": 0.95,
+      "n_draws": 1000
+    }
+  ]
+}

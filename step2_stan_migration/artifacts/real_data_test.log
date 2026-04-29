@@ -1,0 +1,37 @@
+════════════════════════════════════════════════════════════════════
+Step 2 真实数据对齐验证 (完整版)
+════════════════════════════════════════════════════════════════════
+
+[1] 加载依赖包...
+[2] 读取真实数据...
+  数据维度:  700 行, 14 列
+  样本: 处理组= 200 , 对照组= 500 
+  关键字段: trt, binary_y, cont_y, status
+  基线协变量: age, sex, ecog, stage, biomarker
+
+[3] 加载 Stan 辅助函数...
+  ✓ 加载完成
+
+[4] 准备 Stan 数据结构 (真实数据)...
+  Binary: N= 700 , 事件= 323 , 率= 46.1% 
+  Continuous: N= 700 , 均值= 61.24 , SD= 10.21 
+  Survival: N= 700 , 事件= 627 , 率= 89.6% 
+
+[5] 编译 Stan 模型...
+  ✓ 三个模型编译完成
+
+[6] 采样 Stan 模型 (真实数据, 4 chains × 1000 iter)...
+  Binary (真实数据)... Running MCMC with 4 parallel chains...
+
+Chain 1 finished in 0.6 seconds.
+Chain 2 finished in 0.6 seconds.
+Chain 3 finished in 0.6 seconds.
+Chain 4 finished in 0.6 seconds.
+
+All 4 chains finished successfully.
+Mean chain execution time: 0.6 seconds.
+Total execution time: 0.7 seconds.
+
+✓
+  Continuous (真实数据)... Error: Missing input data for the following data variables: cont_y, bayes_w.
+Execution halted

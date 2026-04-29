@@ -1,75 +1,30 @@
-# Rmd output
-*.html
-*.md_backup
-*.docx
+# Local OS metadata
+.DS_Store
+Thumbs.db
 
-# R / RStudio
+# R / RStudio local state
 .Rhistory
 .RData
 .Ruserdata
 .Rproj.user/
-*.Rproj
 
-# Data files (raw data, not tracked)
-*.xlsx
-*.xls
-*.csv
-data/raw/
-data/processed/
-
-# Stan / CmdStan
-*.exe
-*.o
-*.a
-*.so
-*.dylib
-*.stan.in
-*.hpp
-*.stan_model
-.cmdstanpy_*
-cmdstan_model_*
-models/binary
-models/continuous
-models/survival
-engine_package/models/binary
-engine_package/models/continuous
-engine_package/models/survival
-
-# Python
+# Python cache and local environments
 __pycache__/
 *.py[cod]
 *$py.class
-*.egg-info/
-dist/
-build/
 .venv/
 venv/
 
-# Output and logs
-output/
-outputs/cmdstan/
-engine_package/outputs/draws/*
-engine_package/outputs/logs/*
-engine_package/outputs/summaries/*
-logs/
-*.log
-*.err
-step2_stan_migration/artifacts/
-
-# OS
-.DS_Store
-Thumbs.db
-
-# IDE
+# Editor and IDE local files
 .vscode/
 .idea/
 *.swp
 *.swo
 
-# Sensitive files (if any)
-config/*.secret.json
-config/*.private.*
-
-# Cache
+# Local cache directories
 .cache/
 *.cache
+
+# Local-only secrets
+config/*.secret.json
+config/*.private.*
