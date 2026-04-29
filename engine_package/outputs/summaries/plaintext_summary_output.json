@@ -1,8 +1,22 @@
 {
-  "package": "plaintext_cmdstan_engine_demo",
+  "run_id": "plaintext_cmdstan_demo",
+  "model_name": "borrowing_v1",
+  "analysis_spec_version": "0.1",
   "summary_type": "lightweight_plaintext_demo_summary",
+  "output_contract_alignment": {
+    "contract_file": "contracts/output_contract.md",
+    "status": "partial",
+    "notes": [
+      "This file is generated directly from plaintext CmdStan posterior CSV files.",
+      "Posterior summaries use the same field names as the main output contract where possible.",
+      "Full diagnostics are not recomputed by collect_outputs.py v0.1.",
+      "See engine_package/expected_outputs/diagnostics.json for contract-aligned reference diagnostics from Step 2.5."
+    ]
+  },
   "outcomes": [
     {
+      "run_id": "plaintext_cmdstan_demo",
+      "model_name": "borrowing_v1",
       "outcome_type": "binary",
       "estimand": "OR",
       "posterior_mean": 0.7775596868268042,
@@ -10,9 +24,22 @@
       "ci_95_lower": 0.19005578202361212,
       "ci_95_upper": 2.2496620187249055,
       "benefit_probability": 0.77,
+      "diagnostics": {
+        "rhat_max": null,
+        "ess_bulk_min": null,
+        "ess_tail_min": null,
+        "n_divergent": null,
+        "diagnostics_passed": null,
+        "diagnostics_source": "not_extracted_by_plaintext_collector_v0.1"
+      },
+      "warnings": [
+        "Diagnostics are not recomputed by collect_outputs.py v0.1; see engine_package/expected_outputs/diagnostics.json for reference diagnostics."
+      ],
       "n_draws": 1000
     },
     {
+      "run_id": "plaintext_cmdstan_demo",
+      "model_name": "borrowing_v1",
       "outcome_type": "continuous",
       "estimand": "Mean difference",
       "posterior_mean": -2.043691623275,
@@ -20,9 +47,22 @@
       "ci_95_lower": -5.1758183075,
       "ci_95_upper": 1.298098499999999,
       "benefit_probability": 0.882,
+      "diagnostics": {
+        "rhat_max": null,
+        "ess_bulk_min": null,
+        "ess_tail_min": null,
+        "n_divergent": null,
+        "diagnostics_passed": null,
+        "diagnostics_source": "not_extracted_by_plaintext_collector_v0.1"
+      },
+      "warnings": [
+        "Diagnostics are not recomputed by collect_outputs.py v0.1; see engine_package/expected_outputs/diagnostics.json for reference diagnostics."
+      ],
       "n_draws": 1000
     },
     {
+      "run_id": "plaintext_cmdstan_demo",
+      "model_name": "borrowing_v1",
       "outcome_type": "survival",
       "estimand": "HR",
       "posterior_mean": 0.5919004851738048,
@@ -30,6 +70,17 @@
       "ci_95_lower": 0.2926972159909436,
       "ci_95_upper": 1.1183530465831206,
       "benefit_probability": 0.95,
+      "diagnostics": {
+        "rhat_max": null,
+        "ess_bulk_min": null,
+        "ess_tail_min": null,
+        "n_divergent": null,
+        "diagnostics_passed": null,
+        "diagnostics_source": "not_extracted_by_plaintext_collector_v0.1"
+      },
+      "warnings": [
+        "Diagnostics are not recomputed by collect_outputs.py v0.1; see engine_package/expected_outputs/diagnostics.json for reference diagnostics."
+      ],
       "n_draws": 1000
     }
   ]

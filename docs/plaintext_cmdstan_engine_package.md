@@ -77,3 +77,13 @@ python engine_package/scripts/collect_outputs.py
 ```text
 engine_package/outputs/
 ```
+
+## Output contract alignment
+
+Step 3 的 raw outputs 可以保持 CmdStan 原生 CSV / log 格式，包括 posterior CSV files 和 execution logs。这些文件属于 `contracts/output_contract.md` 中定义的 raw output，后续 secure execution / encrypted execution 仍应保留。
+
+summary outputs 应尽量遵守主项目 output contract。`engine_package/expected_outputs/` 是 Step 2.5 生成的 reference contract outputs，其中 `summary_output.json`、`metadata.json` 和 `diagnostics.json` 展示 contract-aligned schema。
+
+`engine_package/outputs/summaries/plaintext_summary_output.json` 是 plaintext collector 生成的 demo output。它复用主 output contract 的核心 summary 字段名，但 `collect_outputs.py` v0.1 不重新计算完整 diagnostics，因此 diagnostics placeholder 使用 `null`，并通过 `diagnostics_source` 明确标注。
+
+因此，plaintext collector output 不应被误解为完整生产级平台输出。未来如果 Step 3 execution layer 要接入主项目或平台，需要复现 `contracts/output_contract.md` 中定义的 summary / metadata / diagnostics schema，并从可靠 diagnostics source 填充 Rhat、ESS、divergent transition 和 pass / fail status。

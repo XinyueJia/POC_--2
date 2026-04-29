@@ -142,7 +142,21 @@ engine_package/outputs/summaries/plaintext_summary_output.json
 
 engine package 是已生成产物的 snapshot。当 statistical design contracts 发生变化时，应从 Step 2.5 重新生成并同步该 package。
 
-## 10. 需要加密 / 工程团队负责的内容
+## 10. Output contract alignment
+
+`engine_package/expected_outputs/` 是 Step 2.5 生成的 contract-aligned reference outputs：
+
+- `summary_output.json`：reference summary output，使用 multi-outcome wrapper；每个 outcome record 复用主 output contract 的核心字段，并将 diagnostics 保留为 nested object。
+- `metadata.json`：reference metadata output。
+- `diagnostics.json`：reference diagnostics output。
+
+`engine_package/outputs/summaries/plaintext_summary_output.json` 是 Step 3 明文 CmdStan demo 的 lightweight collector output。它尽量复用 `contracts/output_contract.md` 中定义的 summary 字段名，但 `collect_outputs.py` v0.1 不重新计算完整 diagnostics。
+
+因此，plaintext collector output 中 diagnostics placeholder 显式写为 `null`，并通过 `diagnostics_source` 标注为 `not_extracted_by_plaintext_collector_v0.1`。完整 reference diagnostics 应查看 `engine_package/expected_outputs/diagnostics.json`。
+
+未来 secure execution / encrypted execution 如果要接入主项目或平台，应复现 `contracts/output_contract.md` 中定义的 summary / metadata / diagnostics schema。raw CmdStan posterior CSV 和 logs 应保留为 raw output。
+
+## 11. 需要加密 / 工程团队负责的内容
 
 加密团队和工程团队负责决定：
 
@@ -154,7 +168,7 @@ engine package 是已生成产物的 snapshot。当 statistical design contracts
 - black-box CmdStan call 是否适合目标 secure-computation architecture
 - 是否需要由其他 execution layer 复现相同的 model / input / output contract
 
-## 11. 当前限制
+## 12. 当前限制
 
 - 本 package 不是 production secure-computation package。
 - 本 package 不包含 Docker、API servers、orchestration 或 deployment。

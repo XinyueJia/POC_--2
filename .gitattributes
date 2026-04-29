@@ -3,6 +3,8 @@
 
 *.md linguist-documentation
 *.Rmd linguist-documentation
+*.html linguist-generated
+*.html linguist-documentation
 
 docs/** linguist-documentation
 contracts/** linguist-documentation

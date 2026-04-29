@@ -10,6 +10,13 @@ PACKAGE_DIR = Path(__file__).resolve().parents[1]
 DRAWS_DIR = PACKAGE_DIR / "outputs" / "draws"
 SUMMARY_DIR = PACKAGE_DIR / "outputs" / "summaries"
 SUMMARY_PATH = SUMMARY_DIR / "plaintext_summary_output.json"
+RUN_ID = "plaintext_cmdstan_demo"
+MODEL_NAME = "borrowing_v1"
+ANALYSIS_SPEC_VERSION = "0.1"
+DIAGNOSTICS_WARNING = (
+    "Diagnostics are not recomputed by collect_outputs.py v0.1; see "
+    "engine_package/expected_outputs/diagnostics.json for reference diagnostics."
+)
 
 
 OUTCOMES = {
@@ -89,6 +96,8 @@ def summarize_outcome(outcome_type, spec):
     sorted_effects = sorted(effect_draws)
 
     return {
+        "run_id": RUN_ID,
+        "model_name": MODEL_NAME,
         "outcome_type": outcome_type,
         "estimand": spec["estimand"],
         "posterior_mean": statistics.fmean(effect_draws),
@@ -96,6 +105,15 @@ def summarize_outcome(outcome_type, spec):
         "ci_95_lower": quantile(sorted_effects, 0.025),
         "ci_95_upper": quantile(sorted_effects, 0.975),
         "benefit_probability": statistics.fmean(1.0 if spec["benefit"](x) else 0.0 for x in effect_draws),
+        "diagnostics": {
+            "rhat_max": None,
+            "ess_bulk_min": None,
+            "ess_tail_min": None,
+            "n_divergent": None,
+            "diagnostics_passed": None,
+            "diagnostics_source": "not_extracted_by_plaintext_collector_v0.1",
+        },
+        "warnings": [DIAGNOSTICS_WARNING],
         "n_draws": len(effect_draws),
     }
 
@@ -103,8 +121,20 @@ def summarize_outcome(outcome_type, spec):
 def main():
     SUMMARY_DIR.mkdir(parents=True, exist_ok=True)
     summary = {
-        "package": "plaintext_cmdstan_engine_demo",
+        "run_id": RUN_ID,
+        "model_name": MODEL_NAME,
+        "analysis_spec_version": ANALYSIS_SPEC_VERSION,
         "summary_type": "lightweight_plaintext_demo_summary",
+        "output_contract_alignment": {
+            "contract_file": "contracts/output_contract.md",
+            "status": "partial",
+            "notes": [
+                "This file is generated directly from plaintext CmdStan posterior CSV files.",
+                "Posterior summaries use the same field names as the main output contract where possible.",
+                "Full diagnostics are not recomputed by collect_outputs.py v0.1.",
+                "See engine_package/expected_outputs/diagnostics.json for contract-aligned reference diagnostics from Step 2.5.",
+            ],
+        },
         "outcomes": [summarize_outcome(outcome_type, spec) for outcome_type, spec in OUTCOMES.items()],
     }
 

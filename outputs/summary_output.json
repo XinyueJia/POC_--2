@@ -18,6 +18,7 @@
         "n_divergent": 0,
         "diagnostics_passed": true
       },
+      "warnings": [],
       "run_id": "borrowing_v1_20260429_145925"
     },
     {
@@ -35,6 +36,7 @@
         "n_divergent": 0,
         "diagnostics_passed": true
       },
+      "warnings": [],
       "run_id": "borrowing_v1_20260429_145925"
     },
     {
@@ -52,6 +54,7 @@
         "n_divergent": 0,
         "diagnostics_passed": true
       },
+      "warnings": [],
       "run_id": "borrowing_v1_20260429_145925"
     }
   ]

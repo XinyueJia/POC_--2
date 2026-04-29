@@ -32,12 +32,13 @@
 
 ## Expected Output
 
-- `expected_outputs/summary_output.json`：Step 2.5 reference summary output
-- `expected_outputs/metadata.json`：Step 2.5 reference metadata output
-- `expected_outputs/diagnostics.json`：Step 2.5 reference diagnostics output
+- `expected_outputs/summary_output.json`：contract-aligned reference summary output
+- `expected_outputs/metadata.json`：reference metadata output
+- `expected_outputs/diagnostics.json`：reference diagnostics output
 
 ## Generated Output
 
 - `outputs/draws/`：shell scripts 生成的 CmdStan posterior CSV files
 - `outputs/logs/`：shell scripts 生成的 CmdStan execution logs
 - `outputs/summaries/`：`collect_outputs.py` 生成的 plaintext demo summaries
+- `outputs/summaries/plaintext_summary_output.json`：generated lightweight plaintext demo summary; partially aligned with output contract; diagnostics placeholders are null
