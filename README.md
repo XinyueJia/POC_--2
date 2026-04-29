@@ -269,6 +269,32 @@
 
 ---
 
+### Step 2.5：Statistical Design Package / Spec-driven Generator
+
+Step 2.5 面向统计设计人员。核心入口是 `spec/analysis_spec.R`，统计设计参数由该文件集中维护，然后自动生成 config、Stan input JSON、CmdStan validation outputs 和标准 summary / metadata / diagnostics 输出。
+
+**新增稳定工作流：**
+- `spec/analysis_spec.R`：统计设计人员主要修改入口
+- `R/generate_config.R`：从 analysis spec 生成 `config/config.json`
+- `R/generate_stan_data.R`：从 preprocessed data 生成 `data/stan_input_*.json`
+- `R/select_stan_model.R`：按 outcome type 选择 `models/*.stan`
+- `R/run_cmdstan_validation.R`：使用 cmdstanr 运行验证
+- `R/format_outputs.R`：生成 `outputs/summary_output.json`、`metadata.json`、`diagnostics.json`
+- `R/run_statistical_design_package.R`：一键 smoke test 总入口
+- `models/`：Step 2.5 使用的稳定 Stan templates
+
+**最小运行命令：**
+
+```bash
+Rscript R/run_statistical_design_package.R
+```
+
+当前阶段仍允许 R / cmdstanr，因为这是统计设计验证包，不是最终 R-free engine package。未来 R-free CmdStan Engine Package 会在 Step 3/4 中处理；本阶段重点是固定 analysis spec、config JSON、Stan input JSON、Stan template 和标准输出之间的接口。
+
+更多说明见 `docs/statistical_design_package.md`。
+
+---
+
 ### Step 3：形成标准执行流程
 将以下部分解耦：
 
@@ -295,7 +321,7 @@
 
 ## 当前使用建议
 
-这个仓库当前正处于 **Step 0 完成 → Step 0.5 完成 → Step 1 冻结 → Step 2 对齐验证完成 → Step 3 准备启动** 的阶段。建议按照以下顺序阅读和使用：
+这个仓库当前正处于 **Step 0 完成 → Step 0.5 完成 → Step 1 冻结 → Step 2 对齐验证完成 → Step 2.5 设计包生成器完成 → Step 3 准备启动** 的阶段。建议按照以下顺序阅读和使用：
 
 ### 第一步：理解整体框架
 1. 阅读本 README 的"仓库目标"和"当前仓库内容"部分，了解项目的整体目标
@@ -338,7 +364,13 @@
 5. `step2_stan_migration/reports/STEP2_PROJECT_SUMMARY_WITH_REAL_DATA.md`：真实数据验证总结
 6. `step2_stan_migration/step2_migration_checklist.md`：迁移验证清单与结论
 
-### 第五步：后续阶段（Step 3+）
+### 第五步：运行 Step 2.5（Statistical Design Package）
+1. 修改 `spec/analysis_spec.R` 中的参数级设置，例如 `a0`、trimming、cut points、MCMC 和 diagnostics thresholds
+2. 运行 `Rscript R/run_statistical_design_package.R`
+3. 查看自动生成的 `config/`、`data/` 和 `outputs/`
+4. 只有 likelihood、borrowing mechanism、estimand 或协变量结构变化时，才需要修改 `models/*.stan`
+
+### 第六步：后续阶段（Step 3+）
 在 Step 2 Stan 迁移完成并验证后，再推进：
 - Step 3：标准执行流程解耦（preprocessing / model / config / execution / packaging）
 - Step 4：工程化封装与安全执行对接
@@ -362,6 +394,7 @@
 | 概览当前分析 | 阅读本 README、四份 contract 和 Rmd 原型 |
 | 评审当前方法的合理性 | 查看 `docs/step1_model_spec_template.md` 的冻结版框架，对应原型逐项检查 |
 | Stan 转写 / 复核 | 查看 `step2_stan_migration/models/`、`R/` 和 `reports/` 中已完成的 Stan 迁移产物 |
+| 统计设计参数验证 | 修改 `spec/analysis_spec.R` 后运行 `Rscript R/run_statistical_design_package.R` |
 | 后续工程化对接 | 基于 `contracts/alignment_checklist.md` 和 `step2_stan_migration/step2_migration_checklist.md` 确认 contract 与 Stan 输出一致 |
 
 ---
@@ -384,6 +417,27 @@
 │   └── step1_model_spec_template.md  （🆕 Step 1冻结版统计模型规范）
 ├── config/
 │   └── config.json                    （生产级运行配置）
+├── spec/
+│   └── analysis_spec.R                （Step 2.5 统计设计入口）
+├── R/
+│   ├── generate_config.R
+│   ├── generate_stan_data.R
+│   ├── select_stan_model.R
+│   ├── run_cmdstan_validation.R
+│   ├── format_outputs.R
+│   └── run_statistical_design_package.R
+├── models/
+│   ├── binary.stan
+│   ├── continuous.stan
+│   └── survival.stan
+├── data/
+│   ├── stan_input_binary.json
+│   ├── stan_input_continuous.json
+│   └── stan_input_survival.json
+├── outputs/
+│   ├── summary_output.json
+│   ├── metadata.json
+│   └── diagnostics.json
 ├── step2_stan_migration/
 │   ├── README.md                      （Step 2 工作区说明）
 │   ├── step2_migration_checklist.md   （Stan↔Rmd 迁移验证清单）

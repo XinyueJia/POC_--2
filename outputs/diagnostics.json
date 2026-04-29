@@ -1,0 +1,27 @@
+{
+  "run_id": "borrowing_v1_20260429_145925",
+  "diagnostics": {
+    "binary": {
+      "rhat_max": 1.0054,
+      "ess_bulk_min": 1208.5526,
+      "ess_tail_min": 1324.7995,
+      "n_divergent": 0,
+      "diagnostics_passed": true
+    },
+    "continuous": {
+      "rhat_max": 1.002,
+      "ess_bulk_min": 1486.9462,
+      "ess_tail_min": 1484.7496,
+      "n_divergent": 0,
+      "diagnostics_passed": true
+    },
+    "survival": {
+      "rhat_max": 1.0053,
+      "ess_bulk_min": 1762.1238,
+      "ess_tail_min": 2067.8059,
+      "n_divergent": 0,
+      "diagnostics_passed": true
+    }
+  },
+  "all_diagnostics_passed": true
+}

@@ -28,6 +28,9 @@ data/processed/
 *.stan_model
 .cmdstanpy_*
 cmdstan_model_*
+models/binary
+models/continuous
+models/survival
 
 # Python
 __pycache__/
@@ -41,6 +44,7 @@ venv/
 
 # Output and logs
 output/
+outputs/cmdstan/
 logs/
 *.log
 *.err
