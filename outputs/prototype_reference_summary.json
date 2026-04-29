@@ -1,0 +1,11 @@
+{
+  "status": "not_run",
+  "reason": "Full brms prototype rerun is optional in v0.1",
+  "expected_comparison": [
+    "binary OR direction",
+    "continuous mean difference direction",
+    "survival HR direction",
+    "posterior interval broad agreement",
+    "diagnostics pass/fail consistency"
+  ]
+}

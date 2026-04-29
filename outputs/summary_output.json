@@ -1,61 +1,61 @@
 {
-  "run_id": "borrowing_v1_20260429_145925",
+  "run_id": "borrowing_v1_20260429_161807",
   "model_name": "borrowing_v1",
   "analysis_spec_version": "0.1",
   "outcomes": [
     {
       "outcome_type": "binary",
       "estimand": "OR",
-      "posterior_mean": 0.7683,
-      "posterior_median": 0.6207,
-      "ci_95_lower": 0.1802,
-      "ci_95_upper": 2.153,
-      "benefit_probability": 0.7725,
+      "posterior_mean": 0.3699,
+      "posterior_median": 0.3636,
+      "ci_95_lower": 0.2412,
+      "ci_95_upper": 0.5333,
+      "benefit_probability": 1,
       "diagnostics": {
-        "rhat_max": 1.0054,
-        "ess_bulk_min": 1208.5526,
-        "ess_tail_min": 1324.7995,
+        "rhat_max": 1.0019,
+        "ess_bulk_min": 1625.6471,
+        "ess_tail_min": 1901.9341,
         "n_divergent": 0,
         "diagnostics_passed": true
       },
       "warnings": [],
-      "run_id": "borrowing_v1_20260429_145925"
+      "run_id": "borrowing_v1_20260429_161807"
     },
     {
       "outcome_type": "continuous",
       "estimand": "Mean difference",
-      "posterior_mean": -2.0817,
-      "posterior_median": -2.116,
-      "ci_95_lower": -5.3322,
-      "ci_95_upper": 1.5272,
-      "benefit_probability": 0.8842,
+      "posterior_mean": -8.7036,
+      "posterior_median": -8.7221,
+      "ci_95_lower": -10.197,
+      "ci_95_upper": -7.1145,
+      "benefit_probability": 1,
       "diagnostics": {
-        "rhat_max": 1.002,
-        "ess_bulk_min": 1486.9462,
-        "ess_tail_min": 1484.7496,
+        "rhat_max": 1.0019,
+        "ess_bulk_min": 1885.4056,
+        "ess_tail_min": 2163.8284,
         "n_divergent": 0,
         "diagnostics_passed": true
       },
       "warnings": [],
-      "run_id": "borrowing_v1_20260429_145925"
+      "run_id": "borrowing_v1_20260429_161807"
     },
     {
       "outcome_type": "survival",
       "estimand": "HR",
-      "posterior_mean": 0.6141,
-      "posterior_median": 0.5745,
-      "ci_95_lower": 0.2969,
-      "ci_95_upper": 1.1604,
-      "benefit_probability": 0.9375,
+      "posterior_mean": 0.4282,
+      "posterior_median": 0.4266,
+      "ci_95_lower": 0.3408,
+      "ci_95_upper": 0.5271,
+      "benefit_probability": 1,
       "diagnostics": {
-        "rhat_max": 1.0053,
-        "ess_bulk_min": 1762.1238,
-        "ess_tail_min": 2067.8059,
+        "rhat_max": 1.0018,
+        "ess_bulk_min": 2005.4349,
+        "ess_tail_min": 2606.0767,
         "n_divergent": 0,
         "diagnostics_passed": true
       },
       "warnings": [],
-      "run_id": "borrowing_v1_20260429_145925"
+      "run_id": "borrowing_v1_20260429_161807"
     }
   ]
 }

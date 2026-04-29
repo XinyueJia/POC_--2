@@ -136,6 +136,7 @@ format_single_output <- function(fit, outcome_type, analysis_spec, run_metadata)
     ci_95_upper = unname(ci[[2]]),
     benefit_probability = benefit_probability,
     diagnostics = diagnostics,
+    warnings = list(),
     run_id = run_metadata$run_id
   )
 }

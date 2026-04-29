@@ -1,0 +1,41 @@
+{
+  "validation_name": "prototype_aligned_validation",
+  "validation_status": "completed",
+  "data_source": "prototype_simulated_data",
+  "source_detail": "prototype/demo_data_advanced.xlsx",
+  "n_rows_preprocessed": 700,
+  "stan_input_paths": {
+    "binary": "data/stan_input_binary.json",
+    "continuous": "data/stan_input_continuous.json",
+    "survival": "data/stan_input_survival.json"
+  },
+  "output_paths": {
+    "summary_output": "outputs/summary_output.json",
+    "metadata": "outputs/metadata.json",
+    "diagnostics": "outputs/diagnostics.json",
+    "prototype_reference_summary": "outputs/prototype_reference_summary.json",
+    "prototype_cmdstan_comparison": "outputs/prototype_cmdstan_comparison.json"
+  },
+  "diagnostics_passed": true,
+  "outcome_types": [
+    "binary",
+    "continuous",
+    "survival"
+  ],
+  "engine_package_sync": {
+    "engine_package/data/stan_input_binary.json": true,
+    "engine_package/data/stan_input_continuous.json": true,
+    "engine_package/data/stan_input_survival.json": true,
+    "engine_package/expected_outputs/summary_output.json": true,
+    "engine_package/expected_outputs/metadata.json": true,
+    "engine_package/expected_outputs/diagnostics.json": true
+  },
+  "error_message": null,
+  "notes": [
+    "This validation uses simulated data aligned with prototype/demo_data_advanced.xlsx or the Rmd prototype simulation logic.",
+    "Step 2.5 generation and CmdStan validation reuse spec/analysis_spec.R and config/config.json.",
+    "This is migration validation, not new statistical model development.",
+    "Full brms-vs-CmdStan numerical comparison is optional in v0.1 and is not inferred unless a real prototype reference summary is available."
+  ],
+  "generated_at": "2026-04-29T16:18:15+0800"
+}

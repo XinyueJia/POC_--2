@@ -295,6 +295,34 @@ Rscript R/run_statistical_design_package.R
 
 ---
 
+### Step 2.6：Prototype-aligned validation
+
+Step 2.5 原先使用小型 synthetic smoke-test data，用于验证 generator、Stan input JSON、CmdStan validation 和标准输出接口。Step 2.6 使用 Rmd prototype 的同源模拟数据，验证 Step 2.5 / CmdStan workflow 可以在 prototype-aligned data 上运行，而不是只在另一套 toy data 上单独跑通。
+
+该步骤会生成：
+
+- `data/preprocessed_demo.rds`
+- `data/stan_input_binary.json`
+- `data/stan_input_continuous.json`
+- `data/stan_input_survival.json`
+- `outputs/summary_output.json`
+- `outputs/metadata.json`
+- `outputs/diagnostics.json`
+- `outputs/prototype_aligned_validation_report.json`
+- `outputs/prototype_cmdstan_comparison.json`
+
+Step 2.6 为 Step 3 plaintext CmdStan engine demo 提供更可信的 demo input 和 expected outputs。该数据仍然是 synthetic / simulated data，不是真实研究数据，也不涉及加密计算。
+
+**运行命令：**
+
+```bash
+Rscript R/run_prototype_aligned_validation.R
+```
+
+更多说明见 `docs/prototype_aligned_validation.md`。
+
+---
+
 ### Step 3：Plaintext CmdStan Engine Demo Package
 
 Step 3 将 Step 2.5 产物打包成一个面向加密 / 工程专家的明文 CmdStan demo package。它展示：
@@ -341,7 +369,7 @@ Step 3 之后，加密 / 工程专家可以评估如何处理 CmdStan binary、J
 
 ## 当前使用建议
 
-这个仓库当前正处于 **Step 0 完成 → Step 0.5 完成 → Step 1 冻结 → Step 2 对齐验证完成 → Step 2.5 设计包生成器完成 → Step 3 明文 CmdStan engine demo 完成** 的阶段。建议按照以下顺序阅读和使用：
+这个仓库当前正处于 **Step 0 完成 → Step 0.5 完成 → Step 1 冻结 → Step 2 对齐验证完成 → Step 2.5 设计包生成器完成 → Step 2.6 prototype-aligned validation 完成 → Step 3 明文 CmdStan engine demo 完成** 的阶段。建议按照以下顺序阅读和使用：
 
 ### 第一步：理解整体框架
 1. 阅读本 README 的"仓库目标"和"当前仓库内容"部分，了解项目的整体目标

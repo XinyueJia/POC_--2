@@ -1,8 +1,8 @@
 {
-  "run_id": "borrowing_v1_20260429_145925",
+  "run_id": "borrowing_v1_20260429_161807",
   "model_name": "borrowing_v1",
   "analysis_spec_version": "0.1",
-  "generated_at": "2026-04-29T14:59:28+0800",
+  "generated_at": "2026-04-29T16:18:14+0800",
   "config_path": "config/config.json",
   "stan_input_paths": {
     "binary": "data/stan_input_binary.json",
@@ -15,9 +15,9 @@
     "survival": "models/survival.stan"
   },
   "cmdstan_run_paths": {
-    "binary": "outputs/cmdstan/borrowing_v1_20260429_145925/binary",
-    "continuous": "outputs/cmdstan/borrowing_v1_20260429_145925/continuous",
-    "survival": "outputs/cmdstan/borrowing_v1_20260429_145925/survival"
+    "binary": "outputs/cmdstan/borrowing_v1_20260429_161807/binary",
+    "continuous": "outputs/cmdstan/borrowing_v1_20260429_161807/continuous",
+    "survival": "outputs/cmdstan/borrowing_v1_20260429_161807/survival"
   },
   "output_paths": {
     "summary_output": "outputs/summary_output.json",

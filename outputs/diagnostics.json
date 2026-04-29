@@ -1,24 +1,24 @@
 {
-  "run_id": "borrowing_v1_20260429_145925",
+  "run_id": "borrowing_v1_20260429_161807",
   "diagnostics": {
     "binary": {
-      "rhat_max": 1.0054,
-      "ess_bulk_min": 1208.5526,
-      "ess_tail_min": 1324.7995,
+      "rhat_max": 1.0019,
+      "ess_bulk_min": 1625.6471,
+      "ess_tail_min": 1901.9341,
       "n_divergent": 0,
       "diagnostics_passed": true
     },
     "continuous": {
-      "rhat_max": 1.002,
-      "ess_bulk_min": 1486.9462,
-      "ess_tail_min": 1484.7496,
+      "rhat_max": 1.0019,
+      "ess_bulk_min": 1885.4056,
+      "ess_tail_min": 2163.8284,
       "n_divergent": 0,
       "diagnostics_passed": true
     },
     "survival": {
-      "rhat_max": 1.0053,
-      "ess_bulk_min": 1762.1238,
-      "ess_tail_min": 2067.8059,
+      "rhat_max": 1.0018,
+      "ess_bulk_min": 2005.4349,
+      "ess_tail_min": 2606.0767,
       "n_divergent": 0,
       "diagnostics_passed": true
     }

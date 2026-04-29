@@ -1,0 +1,19 @@
+{
+  "comparison_status": "not_run",
+  "mode": "placeholder_prototype_reference",
+  "cmdstan_validation_status": "summary_found",
+  "message": "CmdStan validation can be run on prototype-aligned simulated data; full brms-vs-CmdStan numerical comparison has not been executed in v0.1.",
+  "next_step": "Rerun the Rmd/brms prototype or export a real prototype reference summary, then rerun R/compare_prototype_and_cmdstan.R.",
+  "expected_comparison": [
+    "binary OR direction",
+    "continuous mean difference direction",
+    "survival HR direction",
+    "posterior interval broad agreement",
+    "diagnostics pass/fail consistency"
+  ],
+  "diagnostics_passed": true,
+  "prototype_reference_path": "outputs/prototype_reference_summary.json",
+  "cmdstan_summary_path": "outputs/summary_output.json",
+  "diagnostics_path": "outputs/diagnostics.json",
+  "generated_at": "2026-04-29T16:18:46+0800"
+}

@@ -128,7 +128,15 @@ engine_package/outputs/summaries/plaintext_summary_output.json
 
 这些文件用于展示一次成功 plaintext validation run 后应产生的 output schema。由于 HMC sampling 具有随机性且受环境影响，不同 CmdStan 执行之间的 posterior 数值不要求完全一致。
 
-## 9. 统计设计人员可以修改的内容
+## 9. Demo data source
+
+当前 engine package 的 `data/stan_input_*.json` 来自 Step 2.6 prototype-aligned validation。上游数据源是 Rmd prototype 的同源模拟数据：优先使用 `prototype/demo_data_advanced.xlsx`，再通过 Step 2.5 generator 转换为 Stan input JSON。
+
+这仍然是 synthetic / simulated data，不是真实研究数据。它用于 plaintext reference implementation、migration validation 和 secure-computing handoff。
+
+真实部署时，只需要由上游流程生成相同 schema 的 JSON input，即可替换这些 demo input；Stan model、config contract 和 output contract 不应因为替换真实输入而改变。
+
+## 10. 统计设计人员可以修改的内容
 
 统计设计人员通常在主仓库 workflow 中修改：
 
@@ -142,7 +150,7 @@ engine_package/outputs/summaries/plaintext_summary_output.json
 
 engine package 是已生成产物的 snapshot。当 statistical design contracts 发生变化时，应从 Step 2.5 重新生成并同步该 package。
 
-## 10. Output contract alignment
+## 11. Output contract alignment
 
 `engine_package/expected_outputs/` 是 Step 2.5 生成的 contract-aligned reference outputs：
 
@@ -156,7 +164,7 @@ engine package 是已生成产物的 snapshot。当 statistical design contracts
 
 未来 secure execution / encrypted execution 如果要接入主项目或平台，应复现 `contracts/output_contract.md` 中定义的 summary / metadata / diagnostics schema。raw CmdStan posterior CSV 和 logs 应保留为 raw output。
 
-## 11. 需要加密 / 工程团队负责的内容
+## 12. 需要加密 / 工程团队负责的内容
 
 加密团队和工程团队负责决定：
 
@@ -168,7 +176,7 @@ engine package 是已生成产物的 snapshot。当 statistical design contracts
 - black-box CmdStan call 是否适合目标 secure-computation architecture
 - 是否需要由其他 execution layer 复现相同的 model / input / output contract
 
-## 12. 当前限制
+## 13. 当前限制
 
 - 本 package 不是 production secure-computation package。
 - 本 package 不包含 Docker、API servers、orchestration 或 deployment。
