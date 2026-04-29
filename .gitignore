@@ -8,6 +8,9 @@ Thumbs.db
 .Ruserdata
 .Rproj.user/
 
+# Rendered local reports
+*.html
+
 # Python cache and local environments
 __pycache__/
 *.py[cod]
