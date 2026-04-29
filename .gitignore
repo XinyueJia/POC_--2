@@ -44,6 +44,7 @@ output/
 logs/
 *.log
 *.err
+step2_stan_migration/artifacts/
 
 # OS
 .DS_Store

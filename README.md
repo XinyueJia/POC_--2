@@ -242,26 +242,30 @@
 
 ---
 
-### Step 2：Stan 迁移（基础执行链路已可运行）
+### Step 2：Stan 迁移（已完成对齐验证与结构整理）
 在 Step 1 已冻结的前提下，将统计模型正式转写为 CmdStan workflow，包括：
 
 **核心交付物（P0 - 必须）：**
-- `step2_stan_migration/stan_model_binary.stan` - 二分类结局 Stan model
-- `step2_stan_migration/stan_model_continuous.stan` - 连续结局 Stan model  
-- `step2_stan_migration/stan_model_survival.stan` - 生存结局 Stan model（分段指数）
-- `step2_stan_migration/stan_data_preparation.R` - Rmd 输出→Stan data 转换
-- `step2_stan_migration/stan_execution.R` - CmdStan 执行器（config.json 集成）
-- `step2_stan_migration/stan_output_formatter.R` - Stan output→summary_output.json 转换
+- `step2_stan_migration/models/stan_model_binary.stan` - 二分类结局 Stan model
+- `step2_stan_migration/models/stan_model_continuous.stan` - 连续结局 Stan model
+- `step2_stan_migration/models/stan_model_survival.stan` - 生存结局 Stan model（分段指数）
+- `step2_stan_migration/R/stan_data_preparation.R` - Rmd 输出→Stan data 转换
+- `step2_stan_migration/R/stan_execution.R` - CmdStan 执行器（config.json 集成）
+- `step2_stan_migration/R/stan_output_formatter.R` - Stan output→summary_output.json 转换
 - `step2_stan_migration/step2_migration_checklist.md` - Stan↔Rmd 输出验证清单
 
 **可选扩展（P1）：**
 - metadata.json 完整生成（复用 Rmd 逻辑）
 - Stan diagnostics 自动检查（同步 Rmd 阈值）
 
-**当前进展（2026-04-28）：**
+**当前进展（2026-04-29）：**
 - ✅ CmdStan 环境安装完成（v2.38.0）
 - ✅ `cmdstanr` 已可识别 CmdStan path 与 version
-- ✅ 已完成 `stan_model_binary.stan` 编译与最小采样测试
+- ✅ 三个 Stan models（binary / continuous / survival）已完成
+- ✅ Stan data preparation、execution、output formatter 与 alignment validation 脚本已归档到 `step2_stan_migration/R/`
+- ✅ 对齐报告、最终报告和真实数据验证结果已归档到 `step2_stan_migration/reports/`
+- ✅ 历史输出、日志和整理脚本已分别归档到 `archive/`、`artifacts/`、`tools/`
+- ✅ Step 2 工作区已整理为稳定目录结构，可进入 Step 3 标准执行流程设计
 
 ---
 
@@ -291,7 +295,7 @@
 
 ## 当前使用建议
 
-这个仓库当前正处于 **Step 0 完成 → Step 0.5 完成 → Step 1 冻结 → Step 2 基础执行链路已可运行** 的阶段。建议按照以下顺序阅读和使用：
+这个仓库当前正处于 **Step 0 完成 → Step 0.5 完成 → Step 1 冻结 → Step 2 对齐验证完成 → Step 3 准备启动** 的阶段。建议按照以下顺序阅读和使用：
 
 ### 第一步：理解整体框架
 1. 阅读本 README 的"仓库目标"和"当前仓库内容"部分，了解项目的整体目标
@@ -325,14 +329,14 @@
 1. 基于 `docs/step1_model_spec_template.md` 的冻结版模板，维护统计模型规范
 2. 从原型Rmd中提取并冻结：estimand、模型方程式、权重机制、prior 设置、诊断规则
 
-### 第四步：推进 Step 2（Stan 迁移）
-**Step 2 已完成环境配置与基础运行验证。** 后续工作包括：
-1. 创建 `step2_stan_migration/` 目录结构
-2. 基于 Step 1 冻结规范转写 3 个 Stan models（binary / continuous / survival）
-3. 实现数据格式转换层（Rmd preprocessing output → Stan data block）
-4. 实现执行层（CmdStan runner with config.json integration）
-5. 实现输出格式转换层（Stan output → summary_output.json + metadata.json）
-6. 创建 Step 2 验证清单，确保 Stan 输出与 Rmd 输出一致
+### 第四步：查看 Step 2（Stan 迁移）
+**Step 2 已完成目录整理、三模型实现、对齐验证与真实数据验证。** 推荐查看：
+1. `step2_stan_migration/README.md`：Step 2 工作区说明与目录结构
+2. `step2_stan_migration/models/`：三类 Stan 模型源文件
+3. `step2_stan_migration/R/`：数据准备、执行、输出格式化和对齐验证脚本
+4. `step2_stan_migration/reports/STEP2_FINAL_REPORT.md`：Stan 对齐验证最终报告
+5. `step2_stan_migration/reports/STEP2_PROJECT_SUMMARY_WITH_REAL_DATA.md`：真实数据验证总结
+6. `step2_stan_migration/step2_migration_checklist.md`：迁移验证清单与结论
 
 ### 第五步：后续阶段（Step 3+）
 在 Step 2 Stan 迁移完成并验证后，再推进：
@@ -357,8 +361,8 @@
 |---|---|
 | 概览当前分析 | 阅读本 README、四份 contract 和 Rmd 原型 |
 | 评审当前方法的合理性 | 查看 `docs/step1_model_spec_template.md` 的冻结版框架，对应原型逐项检查 |
-| Stan 转写 | 基于冻结后的 Step 1 规范，开展 Stan 转写 |
-| 后续工程化对接 | 基于 `alignment_checklist.md` 的优先修复列表确保所有 contract 完整 |
+| Stan 转写 / 复核 | 查看 `step2_stan_migration/models/`、`R/` 和 `reports/` 中已完成的 Stan 迁移产物 |
+| 后续工程化对接 | 基于 `contracts/alignment_checklist.md` 和 `step2_stan_migration/step2_migration_checklist.md` 确认 contract 与 Stan 输出一致 |
 
 ---
 
@@ -380,6 +384,22 @@
 │   └── step1_model_spec_template.md  （🆕 Step 1冻结版统计模型规范）
 ├── config/
 │   └── config.json                    （生产级运行配置）
+├── step2_stan_migration/
+│   ├── README.md                      （Step 2 工作区说明）
+│   ├── step2_migration_checklist.md   （Stan↔Rmd 迁移验证清单）
+│   ├── R/
+│   │   ├── stan_data_preparation.R
+│   │   ├── stan_execution.R
+│   │   ├── stan_output_formatter.R
+│   │   └── stan_alignment_validation.R
+│   ├── models/
+│   │   ├── stan_model_binary.stan
+│   │   ├── stan_model_continuous.stan
+│   │   └── stan_model_survival.stan
+│   ├── reports/                       （最终报告、对齐报告和 JSON 结果）
+│   ├── artifacts/                     （运行日志与可重建产物）
+│   ├── archive/                       （历史版本输出）
+│   └── tools/                         （整理与辅助脚本）
 └── supplements/
   └── slides/
     ├── slides.tex                （🆕 Beamer幻灯片源文件）

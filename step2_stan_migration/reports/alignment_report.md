@@ -46,4 +46,3 @@ Overall passed: YES
 - ESS bulk delta: 0
 - ESS tail delta: 0
 - Divergent delta: 0
-
