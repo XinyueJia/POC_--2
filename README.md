@@ -62,7 +62,7 @@ python engine_package/scripts/collect_outputs.py
 | 统计设计人员 | `docs/statistical_design_package.md` |
 | Step 2.5 artifact schema 维护者 | `contracts/step25_artifact_contract.md` |
 | 全局输出格式审阅者 | `contracts/output_contract.md` |
-| Encryption / engineering expert | `engine_package/README_for_encryption_team.md` |
+| Encryption / engineering expert | `engine_package/README.md` |
 | 最终迁移验证审阅者 | `docs/final_migration_validation.md` |
 | brms-vs-CmdStan validation detail 审阅者 | `docs/brms_vs_cmdstan_comparison.md` |
 | Prototype-aligned validation detail 审阅者 | `docs/prototype_aligned_validation.md` |
@@ -72,7 +72,7 @@ python engine_package/scripts/collect_outputs.py
 ### 主说明文档
 
 - `docs/statistical_design_package.md` 是 Step 2.5 的唯一主说明文档。
-- `engine_package/README_for_encryption_team.md` 是 plaintext CmdStan engine demo 的唯一主 README。
+- `engine_package/README.md` 是 plaintext CmdStan engine demo 的唯一主 README。
 
 ### 契约文档
 
@@ -120,7 +120,7 @@ Generator 生成：
 
 ## Step 3：Plaintext CmdStan Engine Demo
 
-主 README：`engine_package/README_for_encryption_team.md`
+主 README：`engine_package/README.md`
 
 Engine package 是 plaintext handoff snapshot，包含：
 
@@ -131,6 +131,23 @@ Engine package 是 plaintext handoff snapshot，包含：
 - local runtime output folders
 
 该 package 将 CmdStan 视为外部 plaintext inference engine。它不实现 encryption、MPC、TEE，也不修改 CmdStan internals。
+
+### Optional C++ inspection
+
+如果 encryption / engineering experts 需要查看 stanc-generated model-specific C++ headers，可以运行：
+
+```bash
+export CMDSTAN=/path/to/cmdstan
+bash engine_package/scripts/export_generated_cpp.sh
+```
+
+输出位于：
+
+```text
+engine_package/generated_cpp/
+```
+
+这一步只导出 C++ inspection artifacts，不运行 MCMC，不改变统计结果，不实现 encryption。`engine_package/models/*.stan` 仍然是 statistical source of truth。
 
 ## 仓库结构
 
@@ -164,7 +181,7 @@ Engine package 是 plaintext handoff snapshot，包含：
 │   ├── continuous.stan
 │   └── survival.stan
 └── engine_package/
-    ├── README_for_encryption_team.md
+    ├── README.md
     ├── MANIFEST.md
     ├── config/
     ├── data/

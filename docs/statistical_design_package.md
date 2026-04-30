@@ -86,7 +86,7 @@ Step 2.5 生成 Step 3 plaintext engine package 消费或镜像的 artifacts：
 Step 3 engine package 是这些 artifacts 的 plaintext handoff snapshot。其主 README 为：
 
 ```text
-engine_package/README_for_encryption_team.md
+engine_package/README.md
 ```
 
 Engine package 不是 secure-computation implementation。它不实现 encryption、MPC、TEE，也不修改 CmdStan internals。

@@ -7,7 +7,7 @@
 - Step 2.5 Statistical Design Package：`docs/statistical_design_package.md`
 - Step 2.6 prototype-aligned validation detail：`docs/prototype_aligned_validation.md`
 - Step 2.7 brms-vs-CmdStan comparison detail：`docs/brms_vs_cmdstan_comparison.md`
-- Step 3 plaintext engine demo：`engine_package/README_for_encryption_team.md`
+- Step 3 plaintext engine demo：`engine_package/README.md`
 
 Machine-readable final validation evidence 的预期位置为：
 

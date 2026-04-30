@@ -1,6 +1,6 @@
 # Step 2.6：Prototype-aligned validation
 
-本文档是 supporting validation detail，不是 Step 2.5 主说明文档，也不是 engine package 主 README。主入口见 `docs/statistical_design_package.md` 和 `engine_package/README_for_encryption_team.md`。
+本文档是 supporting validation detail，不是 Step 2.5 主说明文档，也不是 engine package 主 README。主入口见 `docs/statistical_design_package.md` 和 `engine_package/README.md`。
 
 ## 验证目的
 

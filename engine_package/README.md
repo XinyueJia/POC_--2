@@ -1,6 +1,6 @@
 # Plaintext CmdStan Engine Demo Package 明文演示包
 
-本文档是 Step 3 plaintext CmdStan engine demo 的唯一主 README。
+本文档是 Step 3 plaintext CmdStan engine demo 面向 encryption / engineering review 的唯一主 README。
 
 ## 目的
 
@@ -30,7 +30,7 @@ Secure-computation adaptation 属于后续 engineering / cryptography task。Eng
 
 ```text
 engine_package/
-  README_for_encryption_team.md
+  README.md
   MANIFEST.md
   config/config.json
   models/binary.stan
@@ -40,11 +40,14 @@ engine_package/
   data/stan_input_continuous.json
   data/stan_input_survival.json
   scripts/compile_models.sh
+  scripts/export_generated_cpp.sh
   scripts/run_binary.sh
   scripts/run_continuous.sh
   scripts/run_survival.sh
   scripts/run_all.sh
   scripts/collect_outputs.py
+  generated_cpp/README.md
+  generated_cpp/*.hpp
   expected_outputs/summary_output.json
   expected_outputs/metadata.json
   expected_outputs/diagnostics.json
@@ -97,6 +100,37 @@ bash engine_package/scripts/run_binary.sh
 bash engine_package/scripts/run_continuous.sh
 bash engine_package/scripts/run_survival.sh
 ```
+
+## Optional C++ inspection artifacts
+
+Engine package 可选导出由 `stanc` 生成的 C++ headers。该步骤面向需要检查 Stan model-specific generated C++ code 的 encryption / engineering experts。
+
+该步骤不运行 MCMC，不修改统计模型，不修改 input JSON、expected outputs、posterior outputs，也不修改 Step 2.5 artifact contract。
+
+在 repository root 运行：
+
+```bash
+export CMDSTAN=/path/to/cmdstan
+bash engine_package/scripts/export_generated_cpp.sh
+```
+
+生成文件：
+
+```text
+engine_package/generated_cpp/binary.hpp
+engine_package/generated_cpp/continuous.hpp
+engine_package/generated_cpp/survival.hpp
+```
+
+边界说明：
+
+- Generated `.hpp` files 不是统计 source of truth。
+- 统计 source of truth 仍然是 `engine_package/models/*.stan`。
+- Generated `.hpp` files 是 optional inspection artifacts。
+- 不应手工修改 generated `.hpp` files。
+- 如果 `.stan` 文件发生变化，应重新运行 `engine_package/scripts/export_generated_cpp.sh`。
+- 统计团队不修改 CmdStan internals。
+- CmdStan runtime 和 HMC/NUTS implementation 位于本地 CmdStan source tree，不复制进本 repo。
 
 ## 输入与输出
 
