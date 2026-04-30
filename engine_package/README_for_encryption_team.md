@@ -128,6 +128,10 @@ engine_package/outputs/summaries/plaintext_summary_output.json
 
 这些文件用于展示一次成功 plaintext validation run 后应产生的 output schema。由于 HMC sampling 具有随机性且受环境影响，不同 CmdStan 执行之间的 posterior 数值不要求完全一致。
 
+The engine package mirrors Step 2.5 artifacts defined in `contracts/step25_artifact_contract.md`. `engine_package/data/*.json` follows the Stan input JSON schema frozen in that contract. `engine_package/expected_outputs/*.json` follows the reference output schema frozen in the Step 2.5 artifact contract and the global `contracts/output_contract.md`.
+
+This still does not implement encryption or MPC.
+
 ## 9. Demo data source
 
 当前 engine package 的 `data/stan_input_*.json` 来自 Step 2.6 prototype-aligned validation。上游数据源是 Rmd prototype 的同源模拟数据：优先使用 `prototype/demo_data_advanced.xlsx`，再通过 Step 2.5 generator 转换为 Stan input JSON。

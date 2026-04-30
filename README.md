@@ -291,6 +291,12 @@ Rscript R/run_statistical_design_package.R
 
 当前阶段仍允许 R / cmdstanr，因为这是统计设计验证包，不是最终 R-free engine package。未来 R-free CmdStan Engine Package 会在 Step 3/4 中处理；本阶段重点是固定 analysis spec、config JSON、Stan input JSON、Stan template 和标准输出之间的接口。
 
+#### Step 2.5 Artifact Contract
+
+`contracts/step25_artifact_contract.md` 冻结 Step 2.5 Statistical Design Package 的 artifact schema。它覆盖 `spec/analysis_spec.R`、`config/config.json`、`data/stan_input_*.json`、`outputs/summary_output.json`、`outputs/metadata.json`、`outputs/diagnostics.json`，以及 Step 3 `engine_package` 的同步规则。
+
+这份 contract 是 `contracts/output_contract.md` 的 Step 2.5 artifact-level 具体化，不替代主输出契约。参数级修改通常不需要更新 contract，例如 borrowing 参数、trimming、survival cut points、MCMC 设置或 diagnostics thresholds。schema、estimand、model likelihood、borrowing mechanism 或 Stan `data` block 级改动需要 bump contract version，并重新同步 `engine_package/data/*.json` 和 `engine_package/expected_outputs/*.json`。
+
 更多说明见 `docs/statistical_design_package.md`。
 
 ---
@@ -458,7 +464,7 @@ Step 3 之后，加密 / 工程专家可以评估如何处理 CmdStan binary、J
 
 ### 第六步：查看 Step 3（Plaintext CmdStan Engine Demo）
 1. 阅读 `engine_package/README_for_encryption_team.md`
-2. 确认 `engine_package/models/`、`data/`、`config/` 和 `expected_outputs/` 的 contract
+2. 确认 `engine_package/models/`、`data/`、`config/` 和 `expected_outputs/` 的 contract，尤其是 `contracts/step25_artifact_contract.md`
 3. 在本地设置 `CMDSTAN`
 4. 运行 `bash engine_package/scripts/compile_models.sh`
 5. 运行 `bash engine_package/scripts/run_all.sh`

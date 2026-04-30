@@ -1,0 +1,168 @@
+{
+  "contract_name": "step25_artifact_contract",
+  "contract_version": "0.1",
+  "generated_at": "2026-04-30T10:52:58+0800",
+  "all_checks_passed": true,
+  "checks": [
+    {
+      "name": "binary_required_fields",
+      "passed": true,
+      "details": "all required fields present"
+    },
+    {
+      "name": "binary_N_valid",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "binary_y_length",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "binary_trt_length",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "binary_weights_length",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "binary_trt_values",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "binary_weights_nonnegative",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "binary_y_values",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "continuous_required_fields",
+      "passed": true,
+      "details": "all required fields present"
+    },
+    {
+      "name": "continuous_N_valid",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "continuous_y_length",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "continuous_trt_length",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "continuous_weights_length",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "continuous_trt_values",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "continuous_weights_nonnegative",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "continuous_y_numeric",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "survival_required_fields",
+      "passed": true,
+      "details": "all required fields present"
+    },
+    {
+      "name": "survival_N_valid",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "survival_J_valid",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "survival_event_length",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "survival_interval_length",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "survival_trt_length",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "survival_exposure_length",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "survival_weights_length",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "survival_event_values",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "survival_interval_range",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "survival_trt_values",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "survival_exposure_positive",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "survival_weights_nonnegative",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "summary_top_level_fields",
+      "passed": true,
+      "details": "all required fields present"
+    },
+    {
+      "name": "summary_outcome_warnings_present",
+      "passed": true,
+      "details": ""
+    },
+    {
+      "name": "diagnostics_required_fields",
+      "passed": true,
+      "details": "all required fields present"
+    }
+  ]
+}
