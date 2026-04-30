@@ -1,4 +1,6 @@
-# Step 2.7: brms-vs-CmdStan numerical comparison
+# Step 2.7：brms-vs-CmdStan numerical comparison
+
+本文档是 supporting validation detail，不是 Step 2.5 主说明文档，也不是 engine package 主 README。主入口见 `docs/statistical_design_package.md` 和 `engine_package/README_for_encryption_team.md`。
 
 ## 目的
 
@@ -8,9 +10,9 @@ Step 2.6 已证明 Step 2.5 / CmdStan workflow 可以在 Rmd prototype 同源模
 
 ## 与 Step 2.6 的区别
 
-Step 2.6 验证的是 CmdStan workflow 是否能够在 prototype-aligned simulated data 上完成运行并生成 contract-aligned outputs。
+Step 2.6 验证 CmdStan workflow 是否能够在 prototype-aligned simulated data 上完成运行并生成 contract-aligned outputs。
 
-Step 2.7 验证的是两个 Bayesian engines 在同源数据、同一模型结构和同一配置下是否给出方向一致、区间重叠、数量级接近且 diagnostics 合理的结果：
+Step 2.7 验证两个 Bayesian engines 在同源数据、同一模型结构和同一配置下是否给出方向一致、区间重叠、数量级接近且 diagnostics 合理的结果：
 
 - brms / rstan reference models
 - Step 2.5 hand-written Stan / cmdstanr models
@@ -35,7 +37,7 @@ prototype/demo_data_advanced.xlsx
 
 ## brms reference models
 
-Binary outcome:
+Binary outcome：
 
 ```r
 binary_y | weights(bayes_w) ~ trt
@@ -43,7 +45,7 @@ family = bernoulli(link = "logit")
 estimand = OR = exp(beta_trt)
 ```
 
-Continuous outcome:
+Continuous outcome：
 
 ```r
 cont_y | weights(bayes_w) ~ trt
@@ -51,7 +53,7 @@ family = gaussian()
 estimand = Mean difference = beta_trt
 ```
 
-Survival outcome:
+Survival outcome：
 
 ```r
 event | weights(bayes_w) ~ trt + interval + offset(log(exposure))
@@ -59,7 +61,7 @@ family = poisson()
 estimand = HR = exp(beta_trt)
 ```
 
-Survival 数据使用 `analysis_spec$survival$cut_points` 进行 interval splitting，与 CmdStan input generator 保持一致。
+Survival 数据使用 `analysis_spec$survival$cut_points` 进行 interval splitting，并与 CmdStan input generator 保持一致。
 
 ## 运行方式
 
@@ -90,7 +92,7 @@ Full mode 使用 `spec/analysis_spec.R` 中的 MCMC settings：
 - `analysis_spec$mcmc$warmup`
 - `analysis_spec$mcmc$seed`
 
-输出 JSON 会记录 `brms_mode`、`chains`、`iter`、`warmup` 和 `seed`，因此 quick mode 结果不会被误写为 full validation。
+输出 JSON 会记录 `brms_mode`、`chains`、`iter`、`warmup` 和 `seed`，因此 quick mode 结果不会被误标记为 full validation。
 
 ## 当前 full mode 结果
 
@@ -117,7 +119,7 @@ brms reference summary 使用：
 - `all_intervals_overlap`: `true`
 - `all_diagnostics_passed`: `true`
 
-Outcome-level comparison:
+Outcome-level comparison：
 
 | outcome_type | estimand | brms posterior_mean | CmdStan posterior_mean | absolute_difference | relative_difference | direction_consistent | intervals_overlap | both_diagnostics_passed |
 |---|---:|---:|---:|---:|---:|---|---|---|

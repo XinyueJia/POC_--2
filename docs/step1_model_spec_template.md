@@ -27,18 +27,18 @@
 ### 2.2 Estimand定义
 [明确下列内容]
 
-**For binary outcome:**
+**Binary outcome：**
 -- Estimand：Odds Ratio (OR)
 - 参考组（baseline）：Control (trt=0)
 - 对比组：Treated (trt=1)
 - 群体：整体分析人群
 
-**For continuous outcome:**
+**Continuous outcome：**
 -- Estimand：Mean Difference (MD)
 - 参考组：Control (trt=0)
 - 对比组：Treated (trt=1)
 
-**For survival outcome:**
+**Survival outcome：**
 - Estimand：Hazard Ratio (HR)
 - 参考组：Control (trt=0)
 - 对比组：Treated (trt=1)
@@ -331,4 +331,3 @@ event_piece | weights(bayes_w) ~ trt + interval + offset(log(exposure))
 | 版本 | 日期 | 改动 | 审核人 |
 |---|---|---|---|
 | v0.2 | 2026-04-28 | Frozen to current Rmd prototype | XJ |
-

@@ -1,8 +1,8 @@
 # Step 2.5 Artifact Contract: Statistical Design Package v0.1
 
-## 1. Purpose
+## 1. 目的
 
-This contract defines the stable artifact schema for the Step 2.5 Statistical Design Package. It freezes the expected structure of:
+本文档定义 Step 2.5 Statistical Design Package 的稳定 artifact schema，并冻结以下结构预期：
 
 - `spec/analysis_spec.R`
 - `config/config.json`
@@ -13,13 +13,13 @@ This contract defines the stable artifact schema for the Step 2.5 Statistical De
 - `outputs/diagnostics.json`
 - Step 3 `engine_package` mirrored inputs and expected outputs
 
-This contract refines the global output contract for the Step 2.5 Statistical Design Package. It does not replace `contracts/output_contract.md`.
+本文档是对 Step 2.5 Statistical Design Package 的 global output contract 细化，不替代 `contracts/output_contract.md`。
 
-The goal is to support future parameter-level extensions by statistical designers while keeping the CmdStan engine package and downstream engineering / secure-computation interface stable.
+目标是在保持 CmdStan engine package 和下游 engineering / secure-computation interface 稳定的前提下，支持统计设计人员未来进行 parameter-level extensions。
 
-## 2. Scope
+## 2. 范围
 
-This contract covers:
+本文档覆盖：
 
 - `spec/analysis_spec.R`
 - `config/config.json`
@@ -33,7 +33,7 @@ This contract covers:
 - `engine_package/data/*.json`
 - `engine_package/expected_outputs/*.json`
 
-This contract does not cover:
+本文档不覆盖：
 
 - `brms` prototype internal object structure
 - CmdStan internal C++ implementation
@@ -41,7 +41,7 @@ This contract does not cover:
 - production deployment
 - plot output
 
-## 3. Version
+## 3. 版本
 
 ```yaml
 contract_name: step25_artifact_contract
@@ -50,17 +50,17 @@ model_name: borrowing_v1
 status: frozen-for-current-demo
 ```
 
-Version `0.1` corresponds to:
+Version `0.1` 对应：
 
 - `borrowing_v1`
-- `binary`, `continuous`, and `survival` outcomes
-- the multi-outcome `summary_output.json` wrapper
-- the nested diagnostics object inside each outcome summary record
-- plaintext CmdStan engine handoff through `engine_package`
+- `binary`、`continuous` 和 `survival` outcomes
+- multi-outcome `summary_output.json` wrapper
+- 每个 outcome summary record 内部的 nested diagnostics object
+- 通过 `engine_package` 完成 plaintext CmdStan engine handoff
 
 ## 4. analysis_spec.R Schema
 
-`spec/analysis_spec.R` must define `analysis_spec` with this stable structure:
+`spec/analysis_spec.R` 必须定义具有以下稳定结构的 `analysis_spec`：
 
 ```r
 analysis_spec <- list(
@@ -100,31 +100,31 @@ analysis_spec <- list(
 )
 ```
 
-Parameter-level changes are allowed for statistical design work when they do not change the generated schemas. Structure-level changes require a contract version bump. These parameters should not be repeatedly hard-coded across multiple R scripts; `analysis_spec.R` is the canonical statistical-design entry point.
+在不改变 generated schemas 的前提下，统计设计工作可以进行 parameter-level changes。Structure-level changes 需要 bump contract version。这些参数不应在多个 R scripts 中重复 hard-code；`analysis_spec.R` 是 canonical statistical-design entry point。
 
 ## 5. config/config.json Schema
 
-`config/config.json` is generated automatically from `spec/analysis_spec.R`. Manual edits to `config/config.json` should not be treated as the primary workflow.
+`config/config.json` 由 `spec/analysis_spec.R` 自动生成。手动修改 `config/config.json` 不应被视为主 workflow。
 
-The required top-level sections are:
+必需的 top-level sections 为：
 
-- `metadata`: config version, creation metadata, description, and status.
-- `model`: model name and outcome type selection.
-- `borrowing`: borrowing method and borrowing parameters.
-- `weighting`: propensity-score weight usage and trimming parameters.
-- `survival`: survival cut points for the piecewise exponential model.
-- `mcmc`: CmdStan runtime settings.
-- `diagnostics`: thresholds used to validate posterior sampling quality.
-- `output`: output behavior and output directory settings.
-- `paths`: repo-relative paths used by generation, synchronization, and execution scripts.
+- `metadata`：config version、creation metadata、description 和 status。
+- `model`：model name 和 outcome type selection。
+- `borrowing`：borrowing method 和 borrowing parameters。
+- `weighting`：propensity-score weight usage 和 trimming parameters。
+- `survival`：piecewise exponential model 的 survival cut points。
+- `mcmc`：CmdStan runtime settings。
+- `diagnostics`：用于验证 posterior sampling quality 的 thresholds。
+- `output`：output behavior 和 output directory settings。
+- `paths`：generation、synchronization 和 execution scripts 使用的 repo-relative paths。
 
-`config/config.json` is the Step 3 engine package runtime reference config. The `paths` section is important for downstream synchronization and execution scripts.
+`config/config.json` 是 Step 3 engine package runtime reference config。`paths` section 对下游 synchronization 和 execution scripts 具有重要作用。
 
 ## 6. Preprocessed Data Contract
 
-`data/preprocessed_demo.rds` is an R-side preprocessed artifact. It is not a direct CmdStan input. Stan input JSON files are generated from this RDS artifact.
+`data/preprocessed_demo.rds` 是 R-side preprocessed artifact，不是 direct CmdStan input。Stan input JSON files 由该 RDS artifact 生成。
 
-Required minimum fields:
+必需的 minimum fields：
 
 - `trt`
 - `bayes_w`
@@ -133,7 +133,7 @@ Required minimum fields:
 - `time`
 - `status`
 
-Recommended audit fields:
+建议保留的 audit fields：
 
 - `id`
 - `source`
@@ -148,19 +148,19 @@ Recommended audit fields:
 - `iptw_trim`
 - `source_discount`
 
-The current validation uses prototype-aligned simulated data. This data must not be described as real clinical data.
+当前 validation 使用 prototype-aligned simulated data。不得将该数据描述为真实临床数据。
 
 ## 7. Stan Input JSON Schema
 
-Stan input JSON fields must exactly match the corresponding `models/*.stan` data block. These JSON files are the direct CmdStan engine input boundary. Future additions of covariates or any change to a Stan data block require a contract version bump.
+Stan input JSON fields 必须与对应 `models/*.stan` 的 `data` block 精确匹配。这些 JSON files 是 direct CmdStan engine input boundary。未来新增 covariates 或改变任何 Stan data block 时，必须 bump contract version。
 
-JSON inputs should not contain raw clinical identifiers unless a separate privacy and security design explicitly allows that.
+除非单独的 privacy and security design 明确允许，否则 JSON inputs 不应包含 raw clinical identifiers。
 
 ### 7.1 Binary Input
 
 File: `data/stan_input_binary.json`
 
-Required fields:
+必需字段：
 
 - `N`: integer, `N > 0`
 - `y`: integer array length `N`, values `0` or `1`
@@ -171,7 +171,7 @@ Required fields:
 
 File: `data/stan_input_continuous.json`
 
-Required fields:
+必需字段：
 
 - `N`: integer, `N > 0`
 - `y`: numeric array/vector length `N`
@@ -182,7 +182,7 @@ Required fields:
 
 File: `data/stan_input_survival.json`
 
-Required fields:
+必需字段：
 
 - `N`: integer, `N > 0`
 - `J`: integer, `J > 0`
@@ -194,7 +194,7 @@ Required fields:
 
 ## 8. Summary Output Schema
 
-`outputs/summary_output.json` uses a Step 2.5 multi-outcome wrapper:
+`outputs/summary_output.json` 使用 Step 2.5 multi-outcome wrapper：
 
 ```json
 {
@@ -224,21 +224,21 @@ Required fields:
 }
 ```
 
-Each `outcomes[]` element corresponds to one outcome-level summary record in `contracts/output_contract.md`. Step 2.5 keeps diagnostics as a nested object inside each outcome record. `warnings` must exist and must be `[]` when no warnings are present.
+每个 `outcomes[]` element 对应 `contracts/output_contract.md` 中的一个 outcome-level summary record。Step 2.5 将 diagnostics 作为 nested object 保留在每个 outcome record 中。`warnings` 必须存在；无 warnings 时必须为 `[]`。
 
-Frozen estimands:
+已冻结的 estimands：
 
 - `binary`: `OR`
 - `continuous`: `Mean difference`
 - `survival`: `HR`
 
-Any change to field names, estimand definitions, credible interval definitions, or diagnostics requirements requires a contract version bump.
+任何 field names、estimand definitions、credible interval definitions 或 diagnostics requirements 的变更，都需要 bump contract version。
 
 ## 9. Metadata Output Schema
 
-`outputs/metadata.json` records artifact lineage for one Step 2.5 run.
+`outputs/metadata.json` 记录一次 Step 2.5 run 的 artifact lineage。
 
-Required fields:
+必需字段：
 
 - `run_id`
 - `model_name`
@@ -250,11 +250,11 @@ Required fields:
 - `cmdstan_run_paths`
 - `output_paths`
 
-Paths should be repo-relative where practical. The metadata must support future audit and `engine_package` handoff.
+Paths 应尽量使用 repo-relative paths。Metadata 必须支持未来 audit 和 `engine_package` handoff。
 
 ## 10. Diagnostics Output Schema
 
-`outputs/diagnostics.json` must contain:
+`outputs/diagnostics.json` 必须包含：
 
 - `run_id`
 - `diagnostics`
@@ -263,7 +263,7 @@ Paths should be repo-relative where practical. The metadata must support future 
   - `survival`
 - `all_diagnostics_passed`
 
-Each outcome diagnostics object must contain:
+每个 outcome diagnostics object 必须包含：
 
 - `rhat_max`
 - `ess_bulk_min`
@@ -271,11 +271,11 @@ Each outcome diagnostics object must contain:
 - `n_divergent`
 - `diagnostics_passed`
 
-Diagnostics thresholds come from `analysis_spec$diagnostics`. Missing diagnostics should not be treated as a complete reportable result. If `stop_on_failure = TRUE`, diagnostics failure should prevent validation from being marked as completed.
+Diagnostics thresholds 来自 `analysis_spec$diagnostics`。缺失 diagnostics 的结果不应被视为完整可报告结果。若 `stop_on_failure = TRUE`，diagnostics failure 应阻止 validation 被标记为 completed。
 
 ## 11. Engine Package Synchronization Rule
 
-Step 3 `engine_package` mirrors Step 2.5 / Step 2.6 / Step 2.7 artifacts through these mappings:
+Step 3 `engine_package` 通过以下 mappings 镜像 Step 2.5 / Step 2.6 / Step 2.7 artifacts：
 
 - `config/config.json` -> `engine_package/config/config.json`
 - `models/*.stan` -> `engine_package/models/*.stan`
@@ -284,15 +284,15 @@ Step 3 `engine_package` mirrors Step 2.5 / Step 2.6 / Step 2.7 artifacts through
 - `outputs/metadata.json` -> `engine_package/expected_outputs/metadata.json`
 - `outputs/diagnostics.json` -> `engine_package/expected_outputs/diagnostics.json`
 
-`engine_package/data/*.json` is the CmdStan plaintext demo input. `engine_package/expected_outputs/*.json` is the contract-aligned reference output.
+`engine_package/data/*.json` 是 CmdStan plaintext demo input。`engine_package/expected_outputs/*.json` 是 contract-aligned reference output。
 
-`engine_package/scripts/collect_outputs.py` may generate a lightweight output that partially aligns with the reference summary fields, but it does not replace `engine_package/expected_outputs/*.json`.
+`engine_package/scripts/collect_outputs.py` 可以生成与 reference summary fields 部分对齐的 lightweight output，但它不替代 `engine_package/expected_outputs/*.json`。
 
-The engine package is a plaintext reference implementation. It is not a secure-computation implementation.
+Engine package 是 plaintext reference implementation，不是 secure-computation implementation。
 
-## 12. Allowed Changes vs Contract-Breaking Changes
+## 12. 允许的变更与破坏 contract 的变更
 
-Allowed parameter-level changes that do not require a contract version bump:
+不需要 bump contract version 的 allowed parameter-level changes：
 
 - `borrowing$a0`
 - `weighting$trim_lower`
@@ -304,42 +304,42 @@ Allowed parameter-level changes that do not require a contract version bump:
 - `mcmc$seed`
 - diagnostics thresholds
 - output directory
-- `outcome_types` subset selection, for example running only `binary`
+- `outcome_types` subset selection，例如仅运行 `binary`
 
-Contract-breaking changes requiring a version bump:
+需要 bump version 的 contract-breaking changes：
 
-- adding or deleting a required Stan input JSON field
-- modifying a Stan data block
-- changing an estimand definition
-- changing the likelihood
-- adding covariates to an engine-level Stan model
-- changing the borrowing mechanism
-- changing `summary_output.json` field names
-- deleting diagnostics fields
-- changing the credible interval definition, for example from 95% to 90%
-- changing the `benefit_probability` definition
-- changing metadata lineage fields
-- changing the `engine_package` expected output schema
+- 增加或删除 required Stan input JSON field
+- 修改 Stan data block
+- 改变 estimand definition
+- 改变 likelihood
+- 在 engine-level Stan model 中加入 covariates
+- 改变 borrowing mechanism
+- 改变 `summary_output.json` field names
+- 删除 diagnostics fields
+- 改变 credible interval definition，例如从 95% 改为 90%
+- 改变 `benefit_probability` definition
+- 改变 metadata lineage fields
+- 改变 `engine_package` expected output schema
 
-## 13. Relationship to Other Contracts
+## 13. 与其他 contracts 的关系
 
-This contract sits below the global workflow contracts and specializes them for Step 2.5 artifacts:
+本文档位于 global workflow contracts 之下，并针对 Step 2.5 artifacts 进行专门细化：
 
-- `contracts/output_contract.md`: global output contract.
-- `contracts/config_contract.md`, where available: general config-layer contract.
-- `contracts/input_contract.md`, where available: raw input-layer contract.
-- `contracts/preprocessing_boundary.md`, where available: preprocessing and Bayesian engine boundary.
-- `contracts/step25_artifact_contract.md`: Step 2.5 generated artifact contract.
+- `contracts/output_contract.md`：global output contract。
+- `contracts/config_contract.md`：general config-layer contract，如当前仓库存在。
+- `contracts/input_contract.md`：raw input-layer contract，如当前仓库存在。
+- `contracts/preprocessing_boundary.md`：preprocessing and Bayesian engine boundary，如当前仓库存在。
+- `contracts/step25_artifact_contract.md`：Step 2.5 generated artifact contract。
 
-If another contract and this contract appear to overlap, this document should be read as the Step 2.5 artifact-level refinement, not as a replacement for the global contract.
+如果其他 contract 与本文档存在重叠，应将本文档理解为 Step 2.5 artifact-level refinement，而不是对 global contract 的替代。
 
-## 14. Validation Status
+## 14. 验证状态
 
-Contract v0.1 is supported by the current validation artifacts:
+Contract v0.1 由当前 validation artifacts 支持：
 
 - `outputs/prototype_aligned_validation_report.json`
 - `outputs/prototype_cmdstan_comparison.json`
 - `outputs/final_migration_validation_report.json`
 - `docs/final_migration_validation.md`
 
-The current validation uses simulated data, not real clinical data.
+当前 validation 使用 simulated data，不是真实临床数据。

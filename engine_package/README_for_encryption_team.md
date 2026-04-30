@@ -1,23 +1,37 @@
-# Plaintext CmdStan Engine Demo Package
+# Plaintext CmdStan Engine Demo Package 明文演示包
+
+本文档是 Step 3 plaintext CmdStan engine demo 的唯一主 README。
 
 ## 目的
 
-本 package 是面向加密专家、安全计算专家和工程评审人员的 plaintext reference implementation。它用于展示统计设计 workflow 产生的 model files、JSON input interface、CmdStan plaintext execution commands 以及 expected output structure。
+本 package 是面向 encryption experts、secure-computation experts 和 engineering reviewers 的 plaintext reference implementation。它展示 validated statistical design artifacts 如何交付给本地 CmdStan execution layer：
 
-边界说明：
+- Stan model files
+- plaintext JSON inputs
+- CmdStan compile / run scripts
+- expected contract-aligned reference outputs
+- runtime output folders
 
-- 本 package 不实现 encryption。
-- 本 package 不实现 MPC。
-- 本 package 不实现 trusted execution environment。
-- 本 package 不拆解 CmdStan internals。
-- CmdStan 在此处被视为外部 inference engine。
-- 统计团队提供稳定的 model / input / output contracts 以及 plaintext reference outputs。
-- 加密团队和工程团队负责决定如何封装、sandbox、替换或适配 execution layer。
+当前 demo inputs 来自 prototype-aligned simulated data。它们不是真实临床数据，也不是真实 RWD。
 
-## 1. Package Contents
+## 边界说明
+
+本 package：
+
+- 不实现 encryption
+- 不实现 MPC
+- 不实现 trusted execution environment
+- 不拆解或修改 CmdStan internals
+- 将 CmdStan 视为 plaintext external inference engine
+
+Secure-computation adaptation 属于后续 engineering / cryptography task。Engineering teams 可以在保持 model / input / output contracts 不变的前提下，决定如何 package、sandbox、replace 或 adapt execution layer。
+
+## 文件内容
 
 ```text
 engine_package/
+  README_for_encryption_team.md
+  MANIFEST.md
   config/config.json
   models/binary.stan
   models/continuous.stan
@@ -39,11 +53,11 @@ engine_package/
   outputs/summaries/
 ```
 
-## 2. 本地依赖：CmdStan
+`MANIFEST.md` 仅作为文件清单。Workflow guide 以本文档为准。
 
-运行本 package 前，需要在本地安装 CmdStan。脚本通过 `CMDSTAN` 环境变量定位 CmdStan installation root。
+## CmdStan 依赖
 
-## 3. 设置 CMDSTAN
+运行前需要在本地安装 CmdStan，并通过 `CMDSTAN` 环境变量暴露 installation root：
 
 ```bash
 export CMDSTAN=/path/to/cmdstan
@@ -55,21 +69,28 @@ export CMDSTAN=/path/to/cmdstan
 export CMDSTAN=$HOME/.cmdstan/cmdstan-2.38.0
 ```
 
-## 4. 编译 Models
+## 运行 plaintext demo
 
-在仓库根目录运行：
+在 repository root 运行：
 
 ```bash
+export CMDSTAN=/path/to/cmdstan
 bash engine_package/scripts/compile_models.sh
+bash engine_package/scripts/run_all.sh
+python engine_package/scripts/collect_outputs.py
 ```
 
-该命令会编译：
+如果本地 Python 命令为 `python3`，则使用 `python3` 替代 `python`。
 
-- `engine_package/models/binary`
-- `engine_package/models/continuous`
-- `engine_package/models/survival`
+Compile step 会构建：
 
-## 5. 运行单个 Model
+```text
+engine_package/models/binary
+engine_package/models/continuous
+engine_package/models/survival
+```
+
+`run_all.sh` 会运行全部三个 plaintext CmdStan models。也可以使用单模型脚本：
 
 ```bash
 bash engine_package/scripts/run_binary.sh
@@ -77,115 +98,82 @@ bash engine_package/scripts/run_continuous.sh
 bash engine_package/scripts/run_survival.sh
 ```
 
-shell scripts 当前镜像 `engine_package/config/config.json` 中的 MCMC runtime settings：
+## 输入与输出
 
-- warmup: `1000`
-- sampling draws: `1000`
-- seed: `20260407`
+Plaintext CmdStan demo inputs 为：
 
-## 6. 运行全部 Models
-
-```bash
-bash engine_package/scripts/run_all.sh
+```text
+engine_package/data/*.json
 ```
 
-## 7. 输出位置
+这些文件是从 validated Step 2.5 / prototype-aligned workflow 镜像而来的 direct CmdStan JSON inputs。
 
-posterior CSV files：
+Reference outputs 为：
+
+```text
+engine_package/expected_outputs/*.json
+```
+
+这些文件是 Step 2.5 validation workflow 生成的 contract-aligned reference outputs：
+
+- `summary_output.json`
+- `metadata.json`
+- `diagnostics.json`
+
+Local runtime outputs 为：
 
 ```text
 engine_package/outputs/draws/
-```
-
-execution logs：
-
-```text
 engine_package/outputs/logs/
+engine_package/outputs/summaries/
 ```
 
-lightweight plaintext summary：
-
-```bash
-python engine_package/scripts/collect_outputs.py
-# 或：python3 engine_package/scripts/collect_outputs.py
-```
-
-输出文件：
+`collect_outputs.py` 会写入 lightweight plaintext demo summary：
 
 ```text
 engine_package/outputs/summaries/plaintext_summary_output.json
 ```
 
-`collect_outputs.py` 仅使用 Python standard library。
+该 collector output 不是完整 production formatter。完整 reference diagnostics 应查看 `engine_package/expected_outputs/diagnostics.json`。
 
-## 8. Expected Outputs 的含义
+## 契约引用
 
-`engine_package/expected_outputs/` 包含 Step 2.5 Statistical Design Package 生成的 reference outputs：
+详细 schema 保留在 contracts 中，不在本文档重复：
 
-- `summary_output.json`：R / cmdstanr validation package 生成的标准统计 summary
-- `metadata.json`：run metadata、paths、model name 以及 output contract references
-- `diagnostics.json`：Rhat、ESS、divergent transition checks 以及 pass / fail status
+- `contracts/step25_artifact_contract.md`
+- `contracts/output_contract.md`
 
-这些文件用于展示一次成功 plaintext validation run 后应产生的 output schema。由于 HMC sampling 具有随机性且受环境影响，不同 CmdStan 执行之间的 posterior 数值不要求完全一致。
+`engine_package/data/*.json` 遵循 Step 2.5 artifact contract 中冻结的 Stan input schema。`engine_package/expected_outputs/*.json` 遵循 Step 2.5 artifact contract 和 global output contract。
 
-The engine package mirrors Step 2.5 artifacts defined in `contracts/step25_artifact_contract.md`. `engine_package/data/*.json` follows the Stan input JSON schema frozen in that contract. `engine_package/expected_outputs/*.json` follows the reference output schema frozen in the Step 2.5 artifact contract and the global `contracts/output_contract.md`.
+## Demo data source
 
-This still does not implement encryption or MPC.
+当前 engine package data 来自 Step 2.6 和 Step 2.7 validation 使用的 prototype-aligned simulated data。它仅用于 plaintext reference execution、migration validation 和 secure-computing handoff review。
 
-## 9. Demo data source
+它不是真实临床数据，也不是真实 RWD。
 
-当前 engine package 的 `data/stan_input_*.json` 来自 Step 2.6 prototype-aligned validation。上游数据源是 Rmd prototype 的同源模拟数据：优先使用 `prototype/demo_data_advanced.xlsx`，再通过 Step 2.5 generator 转换为 Stan input JSON。
+真实部署时，上游流程可以用相同 schema 的 JSON inputs 替换这些 demo inputs。该替换不应改变 Stan model interface、config contract 或 output contract。
 
-这仍然是 synthetic / simulated data，不是真实研究数据。它用于 plaintext reference implementation、migration validation 和 secure-computing handoff。
+## 最终迁移验证
 
-The current expected outputs are generated from prototype-aligned simulated data. A completed full-mode brms-vs-CmdStan comparison report is available in `outputs/prototype_cmdstan_comparison.json` and can be used as an additional migration-validation artifact.
+最终迁移验证证据见：
 
-真实部署时，只需要由上游流程生成相同 schema 的 JSON input，即可替换这些 demo input；Stan model、config contract 和 output contract 不应因为替换真实输入而改变。
+```text
+docs/final_migration_validation.md
+outputs/final_migration_validation_report.json
+```
 
-## 10. 统计设计人员可以修改的内容
+Supporting validation details 见：
 
-统计设计人员通常在主仓库 workflow 中修改：
+```text
+docs/prototype_aligned_validation.md
+docs/brms_vs_cmdstan_comparison.md
+```
 
-- `spec/analysis_spec.R`
-- MCMC settings
-- borrowing parameter `a0`
-- trimming thresholds
-- survival cut points
-- diagnostic thresholds
-- included outcome types
-
-engine package 是已生成产物的 snapshot。当 statistical design contracts 发生变化时，应从 Step 2.5 重新生成并同步该 package。
-
-## 11. Output contract alignment
-
-`engine_package/expected_outputs/` 是 Step 2.5 生成的 contract-aligned reference outputs：
-
-- `summary_output.json`：reference summary output，使用 multi-outcome wrapper；每个 outcome record 复用主 output contract 的核心字段，并将 diagnostics 保留为 nested object。
-- `metadata.json`：reference metadata output。
-- `diagnostics.json`：reference diagnostics output。
-
-`engine_package/outputs/summaries/plaintext_summary_output.json` 是 Step 3 明文 CmdStan demo 的 lightweight collector output。它尽量复用 `contracts/output_contract.md` 中定义的 summary 字段名，但 `collect_outputs.py` v0.1 不重新计算完整 diagnostics。
-
-因此，plaintext collector output 中 diagnostics placeholder 显式写为 `null`，并通过 `diagnostics_source` 标注为 `not_extracted_by_plaintext_collector_v0.1`。完整 reference diagnostics 应查看 `engine_package/expected_outputs/diagnostics.json`。
-
-未来 secure execution / encrypted execution 如果要接入主项目或平台，应复现 `contracts/output_contract.md` 中定义的 summary / metadata / diagnostics schema。raw CmdStan posterior CSV 和 logs 应保留为 raw output。
-
-## 12. 需要加密 / 工程团队负责的内容
-
-加密团队和工程团队负责决定：
-
-- CmdStan binaries 如何打包或替换
-- JSON inputs 如何保护
-- runtime artifacts 如何隔离
-- logs 和 posterior draws 如何存储
-- execution 如何 sandbox
-- black-box CmdStan call 是否适合目标 secure-computation architecture
-- 是否需要由其他 execution layer 复现相同的 model / input / output contract
-
-## 13. 当前限制
+## 当前限制
 
 - 本 package 不是 production secure-computation package。
+- 本 package 不实现 encryption、MPC 或 TEE。
 - 本 package 不包含 Docker、API servers、orchestration 或 deployment。
-- shell scripts 当前不会从 JSON 动态解析 MCMC runtime settings。
-- 本 package 不完整复刻 R formatter；`collect_outputs.py` 只生成 lightweight plaintext demo summary。
-- 本 package 假设本地已安装 CmdStan，并通过 `CMDSTAN` 环境变量指定位置。
+- Shell scripts 当前会镜像配置中的 MCMC settings，但不会从 JSON 动态解析所有 settings。
+- `collect_outputs.py` 是 lightweight plaintext collector，不复现完整 R formatter。
+- CmdStan 必须已在本地安装，并通过 `CMDSTAN` 指定。
